@@ -3,7 +3,6 @@ package com.igcsscz.backend.modules.usuario;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -19,15 +18,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Raíz abstracta de la jerarquía en tabla única. El administrador se modela con
- * {@code dtype = ADMINISTRADOR} y {@link RolEnum#ADMINISTRADOR} (sin módulo
- * {@code administrador} ni subclase de negocio).
+ * Raíz abstracta de la jerarquía en tabla única. Filas administrador usan la entidad
+ * {@link com.igcsscz.backend.modules.usuario.Administrador} con {@code dtype = ADMINISTRADOR}.
  */
 @Entity
 @Table(name = "usuarios")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING, length = 32)
-@DiscriminatorValue("ADMINISTRADOR")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -20,20 +20,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Vecino extends Usuario {
 
-    @Column(length = 500)
+    @Column(length = 500, nullable = true)
     private String direccion;
 
+    @Column(nullable = true)
     private Double latitud;
 
+    @Column(nullable = true)
     private Double longitud;
 
-    @Column(length = 512)
+    @Column(length = 512, nullable = true)
     private String codigoQR;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Integer puntosAcumulados;
 
-    @Column(nullable = false)
+    @Column(name = "fecha_registro", nullable = true)
     private LocalDateTime fechaRegistro;
 
     @ManyToOne(fetch = FetchType.LAZY)

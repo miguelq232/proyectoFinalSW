@@ -15,9 +15,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Operador extends Usuario {
 
-    @Column(length = 64)
+    @Column(length = 64, nullable = true)
     private String licencia;
 
-    @Column(length = 64)
+    @Column(length = 64, nullable = true)
     private String turno;
 }
