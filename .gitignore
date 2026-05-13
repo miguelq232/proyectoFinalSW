@@ -1,0 +1,22 @@
+# backend
+backend/target/
+backend/.mvn/
+backend/*.class
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# ia
+ia/__pycache__/
+ia/.venv/
+ia/*.pyc
+
+# mobil
+mobil/.dart_tool/
+mobil/build/
+
+# general
+.env
+.DS_Store
+*.log
