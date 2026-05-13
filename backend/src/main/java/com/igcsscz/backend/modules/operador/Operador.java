@@ -1,22 +1,23 @@
 package com.igcsscz.backend.modules.operador;
 
+import com.igcsscz.backend.modules.usuario.Usuario;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "operadores")
+@DiscriminatorValue("OPERADOR")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Operador {
+public class Operador extends Usuario {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 64)
+    private String licencia;
+
+    @Column(length = 64)
+    private String turno;
 }
