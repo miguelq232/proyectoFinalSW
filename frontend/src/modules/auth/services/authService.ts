@@ -1,46 +1,29 @@
-import axios from "axios"
-
 import type { AuthResponse, LoginRequest, RegisterRequest } from "@/modules/auth/models/authModel"
-
-const API_BASE = import.meta.env.VITE_API_URL as string
 
 const LS_TOKEN = "igcsscz_auth_token"
 const LS_ROL = "igcsscz_auth_rol"
 const LS_NOMBRE = "igcsscz_auth_nombre"
 
-function getMessageFromAxiosError(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { message?: string; error?: string } | undefined
-    if (data?.message) return String(data.message)
-    if (data?.error) return String(data.error)
-    if (err.response?.status === 401) return "Credenciales incorrectas"
-    if (err.response?.status === 400) return "Solicitud no válida"
-    if (err.message) return err.message
-  }
-  if (err instanceof Error) return err.message
-  return "Error de conexión"
-}
-
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     try {
-      const res = await axios.post<AuthResponse>(`${API_BASE}/auth/login`, data, {
-        headers: { "Content-Type": "application/json" },
-      })
+      const { api } = await import("@/shared/services/api")
+      const res = await api.post<AuthResponse>("/auth/login", data)
       return res.data
     } catch (e) {
-      throw new Error(getMessageFromAxiosError(e))
+      const { getErrorMessage } = await import("@/shared/services/api")
+      throw new Error(getErrorMessage(e))
     }
   },
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
-      const res = await axios.post<AuthResponse>(`${API_BASE}/auth/register`, data, {
-        headers: { "Content-Type": "application/json" },
-      })
+      const { api } = await import("@/shared/services/api")
+      const res = await api.post<AuthResponse>("/auth/register", data)
       return res.data
     } catch (e) {
-      throw new Error(getMessageFromAxiosError(e))
+      const { getErrorMessage } = await import("@/shared/services/api")
+      throw new Error(getErrorMessage(e))
     }
   },
 

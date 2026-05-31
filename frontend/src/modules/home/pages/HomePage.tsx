@@ -1,16 +1,8 @@
-import { BarChart3, LayoutDashboard, LogOut, MapPin, Recycle, Truck, Users } from "lucide-react"
+import { BarChart3, LayoutDashboard, LogOut, MapPin, Recycle, Truck, Users, Compass, User, Navigation } from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
 
 import { authService } from "@/modules/auth/services/authService"
 import { cn } from "@/lib/utils"
-
-const NAV_ITEMS = [
-  { to: "/home/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/home/usuarios", label: "Usuarios", icon: Users },
-  { to: "/home/camiones", label: "Camiones", icon: Truck },
-  { to: "/home/zonas", label: "Zonas", icon: MapPin },
-  { to: "/home/reportes", label: "Reportes", icon: BarChart3 },
-] as const
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return cn(
@@ -28,6 +20,31 @@ export default function HomePage() {
     authService.logout()
     navigate("/", { replace: true })
   }
+
+  // Generar NAV_ITEMS dinámicamente según rol
+  const navItems = (() => {
+    switch (rol) {
+      case "OPERADOR":
+        return [
+          { to: "/home/operador", label: "Mi Zona y Camión", icon: Compass, end: true },
+        ]
+      case "VECINO":
+        return [
+          { to: "/home/mapa-recoleccion", label: "Radar Recolección", icon: Navigation, end: true },
+          { to: "/home/perfil-vecino", label: "Perfil Ecológico", icon: User, end: true },
+        ]
+      case "ADMINISTRADOR":
+      default:
+        return [
+          { to: "/home/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
+          { to: "/home/gps-tracking", label: "Seguimiento GPS", icon: Navigation, end: true },
+          { to: "/home/usuarios", label: "Usuarios", icon: Users, end: false },
+          { to: "/home/camiones", label: "Camiones", icon: Truck, end: false },
+          { to: "/home/zonas", label: "Zonas", icon: MapPin, end: false },
+          { to: "/home/reportes", label: "Reportes", icon: BarChart3, end: false },
+        ]
+    }
+  })()
 
   return (
     <div className="flex min-h-svh flex-col bg-green-50/40 md:flex-row">
@@ -48,8 +65,8 @@ export default function HomePage() {
         </div>
 
         <nav className="flex flex-1 flex-row gap-1 overflow-x-auto px-2 py-3 md:flex-col md:overflow-y-auto md:px-3">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={navLinkClass} end={to === "/home/dashboard"}>
+          {navItems.map(({ to, label, icon: Icon, end }) => (
+            <NavLink key={to} to={to} className={navLinkClass} end={end}>
               <Icon className="size-4 shrink-0 opacity-90" aria-hidden />
               <span className="whitespace-nowrap">{label}</span>
             </NavLink>

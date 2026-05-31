@@ -27,12 +27,6 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await authService.login({ email: email.trim(), password })
-      if (data.rol !== "ADMINISTRADOR") {
-        setError(
-          "Acceso denegado. Esta plataforma es exclusiva para administradores. Use la app móvil."
-        )
-        return
-      }
       authService.persistSession(data)
       navigate("/home", { replace: true })
     } catch (err) {
