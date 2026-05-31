@@ -30,9 +30,9 @@ export default function ZonasPage() {
   // Form Fields
   const [nombre, setNombre] = useState("")
   const [descripcion, setDescripcion] = useState("")
-  const [latitudCentro, setLatitudCentro] = useState<number | "">("")
-  const [longitudCentro, setLongitudCentro] = useState<number | "">("")
-  const [radioKm, setRadioKm] = useState<number | "">("")
+  const [latitudCentro, setLatitudCentro] = useState<number | null>(null)
+  const [longitudCentro, setLongitudCentro] = useState<number | null>(null)
+  const [radioKm, setRadioKm] = useState<number | null>(null)
   const [activa, setActiva] = useState(true)
 
   useEffect(() => {
@@ -57,9 +57,9 @@ export default function ZonasPage() {
     setEditingZonaId(null)
     setNombre("")
     setDescripcion("")
-    setLatitudCentro("")
-    setLongitudCentro("")
-    setRadioKm("")
+    setLatitudCentro(null)
+    setLongitudCentro(null)
+    setRadioKm(null)
     setActiva(true)
     setFormError(null)
     setIsModalOpen(true)
@@ -70,9 +70,9 @@ export default function ZonasPage() {
     setEditingZonaId(zona.id)
     setNombre(zona.nombre)
     setDescripcion(zona.descripcion || "")
-    setLatitudCentro(zona.latitudCentro ?? "")
-    setLongitudCentro(zona.longitudCentro ?? "")
-    setRadioKm(zona.radioKm ?? "")
+    setLatitudCentro(zona.latitudCentro ?? null)
+    setLongitudCentro(zona.longitudCentro ?? null)
+    setRadioKm(zona.radioKm ?? null)
     setActiva(zona.activa)
     setFormError(null)
     setIsModalOpen(true)
@@ -89,7 +89,7 @@ export default function ZonasPage() {
       return
     }
 
-    if (latitudCentro === "" || longitudCentro === "") {
+    if (latitudCentro === null || longitudCentro === null) {
       setFormError("Por favor selecciona la ubicación del centro de la zona haciendo clic sobre el mapa")
       setSubmitting(false)
       return
@@ -98,9 +98,9 @@ export default function ZonasPage() {
     const payload: ZonaRequest = {
       nombre: nombre.trim(),
       descripcion: descripcion.trim() || undefined,
-      latitudCentro: latitudCentro !== "" ? Number(latitudCentro) : undefined,
-      longitudCentro: longitudCentro !== "" ? Number(longitudCentro) : undefined,
-      radioKm: radioKm !== "" ? Number(radioKm) : undefined,
+      latitudCentro: latitudCentro !== null ? Number(latitudCentro) : undefined,
+      longitudCentro: longitudCentro !== null ? Number(longitudCentro) : undefined,
+      radioKm: radioKm !== null ? Number(radioKm) : undefined,
       activa,
     }
 
@@ -399,8 +399,8 @@ export default function ZonasPage() {
                   id="radioKm"
                   type="number"
                   step="any"
-                  value={radioKm}
-                  onChange={(e) => setRadioKm(e.target.value !== "" ? Number(e.target.value) : "")}
+                  value={radioKm ?? ""}
+                  onChange={(e) => setRadioKm(e.target.value !== "" ? Number(e.target.value) : null)}
                   placeholder="Ej. 2.5"
                   className="border-neutral-200 focus-visible:ring-green-600/20 focus-visible:border-green-600"
                 />
@@ -414,7 +414,7 @@ export default function ZonasPage() {
                 <div className="h-64 rounded-xl overflow-hidden border border-neutral-200 relative">
                   <MapTracker
                     markers={
-                      latitudCentro !== "" && longitudCentro !== ""
+                      latitudCentro !== null && longitudCentro !== null
                         ? [
                             {
                               id: "centro-zona",
@@ -422,18 +422,19 @@ export default function ZonasPage() {
                               lng: Number(longitudCentro),
                               label: nombre || "Centro de la Zona",
                               iconType: "center",
+                              draggable: true,
                             },
                           ]
                         : []
                     }
                     center={
-                      latitudCentro !== "" && longitudCentro !== ""
+                      latitudCentro !== null && longitudCentro !== null
                         ? [Number(latitudCentro), Number(longitudCentro)]
                         : [-17.7834, -63.1821]
                     }
                     zoom={13}
                     circleArea={
-                      latitudCentro !== "" && longitudCentro !== "" && radioKm !== "" && Number(radioKm) > 0
+                      latitudCentro !== null && longitudCentro !== null && radioKm !== null && Number(radioKm) > 0
                         ? {
                             center: [Number(latitudCentro), Number(longitudCentro)],
                             radiusMeters: Number(radioKm) * 1000,

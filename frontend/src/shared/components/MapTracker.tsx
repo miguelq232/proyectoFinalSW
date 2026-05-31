@@ -8,6 +8,7 @@ export interface MapMarker {
   label: string
   iconType?: "truck" | "home" | "center"
   popupContent?: string
+  draggable?: boolean
 }
 
 interface MapTrackerProps {
@@ -90,18 +91,27 @@ export default function MapTracker({
       maxZoom: 20,
     }).addTo(map)
 
-    // Escuchador de clics en el mapa si está provisto
-    if (onMapClick) {
-      map.on("click", (e: any) => {
-        onMapClick(e.latlng.lat, e.latlng.lng)
-      })
-    }
-
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
+    }
+  }, [leafletLoaded])
+
+  // 2.5 Registrar escuchador de clics en el mapa dinámicamente
+  useEffect(() => {
+    if (!leafletLoaded || !mapInstanceRef.current || !onMapClick) return
+
+    const map = mapInstanceRef.current
+    const clickHandler = (e: any) => {
+      onMapClick(e.latlng.lat, e.latlng.lng)
+    }
+
+    map.on("click", clickHandler)
+
+    return () => {
+      map.off("click", clickHandler)
     }
   }, [leafletLoaded, onMapClick])
 
@@ -193,9 +203,27 @@ export default function MapTracker({
         if (m.popupContent) {
           existingMarker.setPopupContent(m.popupContent)
         }
+        
+        // Sincronizar estado draggable
+        if (m.draggable) {
+          existingMarker.dragging.enable()
+        } else {
+          existingMarker.dragging.disable()
+        }
       } else {
         // Crear nuevo marcador
-        const marker = L.marker([m.lat, m.lng], { icon: customIcon }).addTo(currentMap)
+        const marker = L.marker([m.lat, m.lng], { 
+          icon: customIcon,
+          draggable: !!m.draggable 
+        }).addTo(currentMap)
+
+        if (m.draggable && onMapClick) {
+          marker.on("dragend", (event: any) => {
+            const position = event.target.getLatLng()
+            onMapClick(position.lat, position.lng)
+          })
+        }
+
         if (m.popupContent) {
           marker.bindPopup(m.popupContent)
         } else {
