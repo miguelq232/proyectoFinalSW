@@ -10,13 +10,28 @@ frontend/dist/
 # ia
 ia/__pycache__/
 ia/.venv/
+ia/venv/
 ia/*.pyc
 
 # mobil
 mobil/.dart_tool/
 mobil/build/
+mobil/.flutter-plugins
+mobil/.flutter-plugins-dependencies
+
+# proyecto_reciclaje_ia (taller/experimentos)
+proyecto_reciclaje_ia/venv/
+proyecto_reciclaje_ia/data/
+proyecto_reciclaje_ia/__pycache__/
+
+# modelos pesados (no subir a git)
+*.h5
+*.tflite
+*.pkl
 
 # general
 .env
 .DS_Store
 *.log
+__pycache__/
+*.pyc
