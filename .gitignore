@@ -37,6 +37,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ia
+ia/__pycache__/
+ia/.venv/
+ia/venv/
+ia/*.pyc
+
 # =============================================================================
 # Móvil (Flutter / Dart)
 # =============================================================================
@@ -53,6 +59,16 @@ mobil/.idea/
 mobil/app.*.symbols
 mobil/app.*.map.json
 
+# proyecto_reciclaje_ia (taller/experimentos)
+proyecto_reciclaje_ia/venv/
+proyecto_reciclaje_ia/data/
+proyecto_reciclaje_ia/__pycache__/
+
+# modelos pesados (no subir a git)
+*.h5
+*.tflite
+*.pkl
+
 # =============================================================================
 # Python / IA — datasets y modelos (muy pesados, no versionar)
 # =============================================================================
@@ -68,6 +84,7 @@ mobil/app.*.map.json
 *.weights
 *.ckpt
 *.safetensors
+*.pkl
 
 # Datasets e imágenes de entrenamiento
 **/data/dataset*/
@@ -159,6 +176,8 @@ temp/
 *.temp
 *.bak
 *.backup
+__pycache__/
+*.pyc
 
 # =============================================================================
 # Cobertura y cachés varios
