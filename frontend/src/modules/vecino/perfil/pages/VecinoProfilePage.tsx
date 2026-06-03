@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { usuariosService, type UsuarioResponse, type UsuarioRequest } from "@/modules/admin/usuarios/services/usuariosService"
+import { usuariosService, type UsuarioRequest } from "@/modules/admin/usuarios/services/usuariosService"
 import { zonasService, type ZonaResponse } from "@/modules/admin/zona/services/zonasService"
-import { authService } from "@/modules/auth/services/authService"
+import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/services/vecinoService"
 
 export default function VecinoProfilePage() {
-  const [vecino, setVecino] = useState<UsuarioResponse | null>(null)
+  const [vecino, setVecino] = useState<VecinoProfile | null>(null)
   const [zonas, setZonas] = useState<ZonaResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,30 +36,21 @@ export default function VecinoProfilePage() {
   async function fetchProfile() {
     setLoading(true)
     setError(null)
-    const currentName = authService.getNombre() || ""
     try {
-      const [uData, zData] = await Promise.all([
-        usuariosService.getAll(),
-        zonasService.getAll()
+      const [myProfile, zData] = await Promise.all([
+        vecinoService.getMyProfile(),
+        zonasService.getAll(),
       ])
-      
-      setZonas(zData)
-      
-      // Buscar el perfil de este vecino bas├índose en el nombre
-      const myProfile = uData.find(
-        (u) => u.rol === "VECINO" && u.nombre.toLowerCase().includes(currentName.toLowerCase())
-      )
 
-      if (myProfile) {
-        setVecino(myProfile)
-        setNombre(myProfile.nombre)
-        setApellido(myProfile.apellido)
-        setTelefono(myProfile.telefono || "")
-        setDireccion(myProfile.direccion || "")
-        setLatitud(myProfile.latitud ?? "")
-        setLongitud(myProfile.longitud ?? "")
-        setZonaId(myProfile.zonaId ?? "")
-      }
+      setZonas(zData)
+      setVecino(myProfile)
+      setNombre(myProfile.nombre)
+      setApellido(myProfile.apellido)
+      setTelefono(myProfile.telefono || "")
+      setDireccion(myProfile.direccion || "")
+      setLatitud(myProfile.latitud ?? "")
+      setLongitud(myProfile.longitud ?? "")
+      setZonaId(myProfile.zonaId ?? "")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar perfil de vecino")
     } finally {
@@ -96,8 +87,22 @@ export default function VecinoProfilePage() {
 
     try {
       const updated = await usuariosService.update(vecino.id, payload)
-      setVecino(updated)
-      setSuccessMsg("┬íPerfil y ubicaci├│n actualizados con ├®xito!")
+      setVecino({
+        id: updated.id,
+        nombre: updated.nombre,
+        apellido: updated.apellido,
+        email: updated.email,
+        telefono: updated.telefono,
+        direccion: updated.direccion ?? null,
+        latitud: updated.latitud ?? null,
+        longitud: updated.longitud ?? null,
+        zonaId: updated.zonaId ?? null,
+        zonaNombre: updated.zonaNombre ?? null,
+        codigoQR: updated.codigoQR ?? null,
+        puntosAcumulados: updated.puntosAcumulados ?? null,
+        activo: updated.activo,
+      })
+      setSuccessMsg("¡Perfil y ubicación actualizados con éxito!")
       setTimeout(() => setSuccessMsg(null), 4000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar perfil")
