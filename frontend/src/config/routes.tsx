@@ -10,6 +10,7 @@ import CamionesPage from "@/modules/admin/camion/pages/CamionesPage"
 import ZonasPage from "@/modules/admin/zona/pages/ZonasPage"
 import GpsTrackingPage from "@/modules/admin/gps/pages/GpsTrackingPage"
 import ReportesPage from "@/modules/admin/reportes/pages/ReportesPage"
+import ConfigPuntosPage from "@/modules/admin/config/pages/ConfigPuntosPage"
 import VecinoProfilePage from "@/modules/vecino/perfil/pages/VecinoProfilePage"
 import VecinoTrackingPage from "@/modules/vecino/mapa/pages/VecinoTrackingPage"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
@@ -50,6 +51,7 @@ export function AppRoutes() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="camiones" element={<CamionesPage />} />
           <Route path="zonas" element={<ZonasPage />} />
+          <Route path="config-puntos" element={<ConfigPuntosPage />} />
           <Route path="reportes" element={<ReportesPage />} />
 
           {/* Rutas de Operario */}

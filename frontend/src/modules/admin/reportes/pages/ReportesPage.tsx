@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import {
+  Award,
   BarChart3,
+  CalendarDays,
   Loader2,
   MapPin,
+  Recycle,
   Truck,
   Users,
   UserCheck,
@@ -13,7 +16,10 @@ import {
   reportesService,
   type ReporteCantidadEstado,
   type ReporteCantidadRol,
+  type ReportePuntosCategoria,
+  type ReportePuntosDia,
   type ReporteResumen,
+  type ReporteTopVecino,
   type ReporteVecinosPorZona,
 } from "@/modules/admin/reportes/services/reportesService"
 
@@ -29,6 +35,20 @@ const ESTADO_LABELS: Record<string, string> = {
   ACTIVO: "Activo",
   INACTIVO: "Inactivo",
   EN_MANTENIMIENTO: "En mantenimiento",
+}
+
+const CATEGORIA_LABELS: Record<string, string> = {
+  GLASS: "Vidrio",
+  METAL: "Metal",
+  PAPER: "Papel",
+  PET: "PET",
+  PLASTIC: "Plástico",
+}
+
+function formatFechaCorta(fecha: string): string {
+  const d = new Date(fecha + "T12:00:00")
+  if (Number.isNaN(d.getTime())) return fecha
+  return d.toLocaleDateString("es-BO", { day: "2-digit", month: "short" })
 }
 
 interface ChartItem {
@@ -135,11 +155,58 @@ function RoleDonutChart({ items }: { items: ChartItem[] }) {
   )
 }
 
+function DailyPointsBarChart({ items }: { items: { fecha: string; totalPuntos: number }[] }) {
+  const max = Math.max(...items.map((item) => item.totalPuntos), 1)
+
+  if (items.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-neutral-400">
+        Sin datos en los últimos 30 días
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full min-h-[220px] flex-col">
+      <div className="flex flex-1 items-end gap-1 overflow-x-auto pb-1 pt-2">
+        {items.map((item) => {
+          const pct = item.totalPuntos === 0 ? 0 : (item.totalPuntos / max) * 100
+          return (
+            <div
+              key={item.fecha}
+              className="flex min-w-[2rem] flex-1 flex-col items-center justify-end gap-1 sm:min-w-[2.25rem]"
+              title={`${formatFechaCorta(item.fecha)}: ${item.totalPuntos} pts`}
+            >
+              <span className="text-[10px] font-semibold tabular-nums text-green-800">
+                {item.totalPuntos > 0 ? item.totalPuntos : ""}
+              </span>
+              <div className="flex h-40 w-full max-w-9 items-end justify-center rounded-t-md bg-green-50/80 sm:h-44">
+                <div
+                  className="w-full max-w-8 rounded-t-md bg-gradient-to-t from-green-700 to-green-500 transition-all duration-500"
+                  style={{ height: `${pct}%`, minHeight: item.totalPuntos > 0 ? "4px" : "0" }}
+                  role="img"
+                  aria-label={`${formatFechaCorta(item.fecha)}: ${item.totalPuntos} puntos`}
+                />
+              </div>
+              <span className="max-w-full truncate text-center text-[9px] leading-tight text-neutral-500">
+                {formatFechaCorta(item.fecha)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function ReportesPage() {
   const [resumen, setResumen] = useState<ReporteResumen | null>(null)
   const [usuariosPorRol, setUsuariosPorRol] = useState<ReporteCantidadRol[]>([])
   const [camionesPorEstado, setCamionesPorEstado] = useState<ReporteCantidadEstado[]>([])
   const [vecinosPorZona, setVecinosPorZona] = useState<ReporteVecinosPorZona[]>([])
+  const [puntosPorCategoria, setPuntosPorCategoria] = useState<ReportePuntosCategoria[]>([])
+  const [topVecinos, setTopVecinos] = useState<ReporteTopVecino[]>([])
+  const [puntosPorDia, setPuntosPorDia] = useState<ReportePuntosDia[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -147,16 +214,30 @@ export default function ReportesPage() {
     async function loadReportes() {
       try {
         setError(null)
-        const [resumenData, rolesData, estadosData, zonasData] = await Promise.all([
+        const [
+          resumenData,
+          rolesData,
+          estadosData,
+          zonasData,
+          categoriaData,
+          topVecinosData,
+          puntosDiaData,
+        ] = await Promise.all([
           reportesService.getResumen(),
           reportesService.getUsuariosPorRol(),
           reportesService.getCamionesPorEstado(),
           reportesService.getVecinosPorZona(),
+          reportesService.getPuntosPorCategoria(),
+          reportesService.getTopVecinos(),
+          reportesService.getPuntosPorDia(),
         ])
         setResumen(resumenData)
         setUsuariosPorRol(rolesData)
         setCamionesPorEstado(estadosData)
         setVecinosPorZona(zonasData)
+        setPuntosPorCategoria(categoriaData)
+        setTopVecinos(topVecinosData)
+        setPuntosPorDia(puntosDiaData)
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error al cargar reportes")
       } finally {
@@ -228,6 +309,11 @@ export default function ReportesPage() {
   const vecinosChartItems: ChartItem[] = vecinosPorZona.map((item) => ({
     label: item.zonaNombre,
     value: item.cantidad,
+  }))
+
+  const puntosDiaChartItems = puntosPorDia.map((item) => ({
+    fecha: item.fecha,
+    totalPuntos: item.totalPuntos,
   }))
 
   return (
@@ -319,6 +405,108 @@ export default function ReportesPage() {
               </div>
             ) : (
               <ProportionalBarChart items={vecinosChartItems} />
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <Recycle className="size-5 text-green-600" aria-hidden />
+            <h2 className="text-lg font-semibold text-green-900">Puntos por categoría</h2>
+          </div>
+          {loading ? (
+            <div className="py-12 text-center text-sm text-green-700/70">Cargando tabla...</div>
+          ) : puntosPorCategoria.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutral-400">Sin depósitos registrados</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[320px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-green-100 text-xs font-semibold uppercase tracking-wider text-green-800/80">
+                    <th className="pb-3 pr-4">Categoría</th>
+                    <th className="pb-3 pr-4 text-right">Total puntos</th>
+                    <th className="pb-3 text-right">Total depósitos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {puntosPorCategoria.map((row) => (
+                    <tr
+                      key={row.categoria}
+                      className="border-b border-green-50 last:border-0 hover:bg-green-50/50"
+                    >
+                      <td className="py-3 pr-4 font-medium text-neutral-700">
+                        {CATEGORIA_LABELS[row.categoria] ?? row.categoria}
+                      </td>
+                      <td className="py-3 pr-4 text-right font-semibold tabular-nums text-green-800">
+                        {row.totalPuntos}
+                      </td>
+                      <td className="py-3 text-right tabular-nums text-neutral-600">
+                        {row.totalDepositos}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <Award className="size-5 text-green-600" aria-hidden />
+            <h2 className="text-lg font-semibold text-green-900">Top 10 vecinos recicladores</h2>
+          </div>
+          {loading ? (
+            <div className="py-12 text-center text-sm text-green-700/70">Cargando tabla...</div>
+          ) : topVecinos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutral-400">Sin vecinos registrados</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[360px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-green-100 text-xs font-semibold uppercase tracking-wider text-green-800/80">
+                    <th className="pb-3 pr-3">#</th>
+                    <th className="pb-3 pr-4">Nombre</th>
+                    <th className="pb-3 pr-4">Email</th>
+                    <th className="pb-3 text-right">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topVecinos.map((row, index) => (
+                    <tr
+                      key={row.email}
+                      className="border-b border-green-50 last:border-0 hover:bg-green-50/50"
+                    >
+                      <td className="py-3 pr-3 font-semibold tabular-nums text-green-700">
+                        {index + 1}
+                      </td>
+                      <td className="py-3 pr-4 font-medium text-neutral-700">{row.vecinoNombre}</td>
+                      <td className="py-3 pr-4 text-neutral-500">{row.email}</td>
+                      <td className="py-3 text-right font-semibold tabular-nums text-green-800">
+                        {row.puntosAcumulados}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm lg:col-span-2">
+          <div className="mb-4 flex items-center gap-2">
+            <CalendarDays className="size-5 text-green-600" aria-hidden />
+            <h2 className="text-lg font-semibold text-green-900">Puntos por día (últimos 30 días)</h2>
+          </div>
+          <div className="h-64 sm:h-72">
+            {loading ? (
+              <div className="flex h-full items-center justify-center text-sm text-green-700/70">
+                Cargando gráfico...
+              </div>
+            ) : (
+              <DailyPointsBarChart items={puntosDiaChartItems} />
             )}
           </div>
         </section>

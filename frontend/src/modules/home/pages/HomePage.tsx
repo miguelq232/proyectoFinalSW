@@ -1,4 +1,4 @@
-import { BarChart3, LayoutDashboard, LogOut, MapPin, Recycle, Truck, Users, Compass, User, Navigation } from "lucide-react"
+import { BarChart3, LayoutDashboard, LogOut, MapPin, Recycle, Settings, Truck, Users, Compass, User, Navigation } from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
 
 import { authService } from "@/modules/auth/services/authService"
@@ -41,6 +41,7 @@ export default function HomePage() {
           { to: "/home/usuarios", label: "Usuarios", icon: Users, end: false },
           { to: "/home/camiones", label: "Camiones", icon: Truck, end: false },
           { to: "/home/zonas", label: "Zonas", icon: MapPin, end: false },
+          { to: "/home/config-puntos", label: "Configuración", icon: Settings, end: false },
           { to: "/home/reportes", label: "Reportes", icon: BarChart3, end: false },
         ]
     }

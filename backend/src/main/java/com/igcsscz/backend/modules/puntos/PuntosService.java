@@ -1,5 +1,6 @@
 package com.igcsscz.backend.modules.puntos;
 
+import com.igcsscz.backend.modules.config.ConfigPuntosService;
 import com.igcsscz.backend.modules.puntos.dto.PuntosRequestDTO;
 import com.igcsscz.backend.modules.puntos.dto.PuntosResponseDTO;
 import com.igcsscz.backend.modules.vecino.Vecino;
@@ -16,10 +17,15 @@ public class PuntosService {
 
     private final PuntosRepository puntosRepository;
     private final VecinoRepository vecinoRepository;
+    private final ConfigPuntosService configPuntosService;
 
-    public PuntosService(PuntosRepository puntosRepository, VecinoRepository vecinoRepository) {
+    public PuntosService(
+            PuntosRepository puntosRepository,
+            VecinoRepository vecinoRepository,
+            ConfigPuntosService configPuntosService) {
         this.puntosRepository = puntosRepository;
         this.vecinoRepository = vecinoRepository;
+        this.configPuntosService = configPuntosService;
     }
 
     @Transactional
@@ -34,7 +40,8 @@ public class PuntosService {
                         .orElseThrow(
                                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
 
-        int puntosOtorgados = calcularPuntos(request.getTipoResiduo(), request.getCantidad());
+        int puntosOtorgados = configPuntosService.calcularPuntos(
+                request.getTipoResiduo(), request.getCantidad(), request.getPesoKg());
 
         if (puntosOtorgados > 0) {
             int actuales = vecino.getPuntosAcumulados() != null ? vecino.getPuntosAcumulados() : 0;
@@ -74,29 +81,6 @@ public class PuntosService {
         return vecinoRepository
                 .findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
-    }
-
-    private int calcularPuntos(String tipoResiduo, Double cantidad) {
-        if (tipoResiduo == null || tipoResiduo.isBlank()) {
-            return 0;
-        }
-
-        int rate =
-                switch (tipoResiduo.trim().toUpperCase()) {
-                    case "PLASTICO" -> 10;
-                    case "VIDRIO" -> 15;
-                    case "PAPEL" -> 8;
-                    case "METAL" -> 20;
-                    case "ORGANICO" -> 5;
-                    default -> 0;
-                };
-
-        if (rate == 0) {
-            return 0;
-        }
-
-        double qty = cantidad != null && cantidad > 0 ? cantidad : 1.0;
-        return (int) Math.round(rate * qty);
     }
 
     private PuntosResponseDTO toResponseDTO(Puntos puntos) {

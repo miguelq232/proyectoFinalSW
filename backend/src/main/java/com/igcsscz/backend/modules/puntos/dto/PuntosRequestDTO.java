@@ -12,5 +12,6 @@ public class PuntosRequestDTO {
     private String codigoQR;
     private String tipoResiduo;
     private Double cantidad;
+    private Double pesoKg;
     private String descripcion;
 }

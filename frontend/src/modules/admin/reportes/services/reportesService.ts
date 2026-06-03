@@ -25,6 +25,25 @@ export interface ReporteVecinosPorZona {
   cantidad: number
 }
 
+export interface ReportePuntosCategoria {
+  categoria: string
+  totalPuntos: number
+  totalDepositos: number
+}
+
+export interface ReporteTopVecino {
+  vecinoNombre: string
+  email: string
+  puntosAcumulados: number
+  totalDepositos: number
+}
+
+export interface ReportePuntosDia {
+  fecha: string
+  totalPuntos: number
+  totalDepositos: number
+}
+
 export const reportesService = {
   async getResumen(): Promise<ReporteResumen> {
     try {
@@ -56,6 +75,33 @@ export const reportesService = {
   async getVecinosPorZona(): Promise<ReporteVecinosPorZona[]> {
     try {
       const res = await api.get<ReporteVecinosPorZona[]>("/reportes/vecinos-por-zona")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getPuntosPorCategoria(): Promise<ReportePuntosCategoria[]> {
+    try {
+      const res = await api.get<ReportePuntosCategoria[]>("/reportes/puntos-por-categoria")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getTopVecinos(): Promise<ReporteTopVecino[]> {
+    try {
+      const res = await api.get<ReporteTopVecino[]>("/reportes/top-vecinos")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getPuntosPorDia(): Promise<ReportePuntosDia[]> {
+    try {
+      const res = await api.get<ReportePuntosDia[]>("/reportes/puntos-por-dia")
       return res.data
     } catch (e) {
       throw new Error(getErrorMessage(e))
