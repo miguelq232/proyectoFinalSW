@@ -6,11 +6,10 @@ import {
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
 import { gpsService, type CamionUbicacion, type CercaniaResponse } from "@/modules/admin/gps/services/gpsService"
-import { usuariosService, type UsuarioResponse } from "@/modules/admin/usuarios/services/usuariosService"
-import { authService } from "@/modules/auth/services/authService"
+import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/services/vecinoService"
 
 export default function VecinoTrackingPage() {
-  const [vecino, setVecino] = useState<UsuarioResponse | null>(null)
+  const [vecino, setVecino] = useState<VecinoProfile | null>(null)
   const [camionesEnZona, setCamionesEnZona] = useState<CamionUbicacion[]>([])
   const [proximidad, setProximidad] = useState<CercaniaResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,19 +39,12 @@ export default function VecinoTrackingPage() {
   async function fetchProfile() {
     setLoading(true)
     setError(null)
-    const currentName = authService.getNombre() || ""
     try {
-      const uData = await usuariosService.getAll()
-      const myProfile = uData.find(
-        (u) => u.rol === "VECINO" && u.nombre.toLowerCase().includes(currentName.toLowerCase())
-      )
-
-      if (myProfile) {
-        setVecino(myProfile)
-        if (myProfile.latitud && myProfile.longitud) {
-          setMapCenter([myProfile.latitud, myProfile.longitud])
-          setMapZoom(15)
-        }
+      const myProfile = await vecinoService.getMyProfile()
+      setVecino(myProfile)
+      if (myProfile.latitud && myProfile.longitud) {
+        setMapCenter([myProfile.latitud, myProfile.longitud])
+        setMapZoom(15)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar perfil")
