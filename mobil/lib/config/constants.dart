@@ -6,14 +6,19 @@ class AppConstants {
 
   static const String appName = 'IGCS SCZ Reciclaje';
 
-  // TODO: conectar con backend Spring Boot
-  static const String hardcodedEmail = 'admin@eco.com';
-  static const String hardcodedPassword = '123456';
-  static const String hardcodedNombre = 'Vecino Eco';
+  static const String hardcodedEmail = 'vecino.ana@correo.com';
+  static const String hardcodedPassword = 'admin123';
+  static const String hardcodedNombre = 'Ana Suárez';
 
   static const String prefsLoggedIn = 'igcsscz_logged_in';
   static const String prefsEmail = 'igcsscz_email';
   static const String prefsNombre = 'igcsscz_nombre';
+  static const String prefsToken = 'igcsscz_token';
+  static const String prefsRol = 'igcsscz_rol';
+
+  /// URL base del backend Spring Boot. Configurar en `.env` como API_URL.
+  static String get apiBaseUrl =>
+      dotenv.env['API_URL'] ?? 'http://192.168.0.11:8080/api';
 
   /// URL del microservicio FastAPI de IA. Configurar en `.env` como IA_URL.
   static String get iaPredictUrl =>

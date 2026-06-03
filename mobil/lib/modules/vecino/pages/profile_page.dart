@@ -1,18 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
+import 'package:mobil/modules/vecino/providers/vecino_provider.dart';
 import 'package:provider/provider.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfileIfNeeded());
+  }
+
+  void _loadProfileIfNeeded() {
+    final auth = context.read<AuthProvider>();
+    final vecino = context.read<VecinoProvider>();
+
+    if (vecino.perfil == null && auth.token.isNotEmpty) {
+      vecino.loadProfile(auth.token);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final vecino = context.watch<VecinoProvider>();
+    final perfil = vecino.perfil;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -23,7 +46,9 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              auth.nombre,
+              perfil != null
+                  ? '${perfil.nombre} ${perfil.apellido}'
+                  : auth.nombre,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -31,21 +56,58 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              auth.email,
+              perfil?.email ?? auth.email,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Colors.grey[600],
                   ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            _ProfileField(
+              icon: Icons.phone_outlined,
+              label: 'Teléfono',
+              value: perfil?.telefono ?? '—',
+            ),
+            _ProfileField(
+              icon: Icons.home_outlined,
+              label: 'Dirección',
+              value: perfil?.direccion ?? '—',
+            ),
+            _ProfileField(
+              icon: Icons.map_outlined,
+              label: 'Zona',
+              value: perfil?.zonaNombre ?? '—',
+            ),
+            _ProfileField(
+              icon: Icons.stars_outlined,
+              label: 'Puntos acumulados',
+              value: '${perfil?.puntosAcumulados ?? 0}',
+            ),
+            const SizedBox(height: 16),
             Card(
-              child: ListTile(
-                leading: const Icon(Icons.badge_outlined),
-                title: const Text('Rol'),
-                subtitle: const Text('Vecino'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Código QR',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      perfil?.codigoQR?.isNotEmpty == true
+                          ? perfil!.codigoQR!
+                          : '—',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: () async {
                 await context.read<AuthProvider>().logout();
@@ -63,6 +125,30 @@ class ProfilePage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileField extends StatelessWidget {
+  const _ProfileField({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(label),
+        subtitle: Text(value),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobil/modules/auth/pages/login_page.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
@@ -16,13 +17,25 @@ GoRouter createAppRouter(AuthProvider authProvider) {
       final isLogin = state.matchedLocation == '/login';
 
       if (!loggedIn && !isLogin) return '/login';
-      if (loggedIn && isLogin) return '/vecino/home';
+      if (loggedIn && isLogin) {
+        final rol = authProvider.rol.toUpperCase();
+        if (rol == 'ADMINISTRADOR' || rol == 'OPERADOR') {
+          return '/operador/home';
+        }
+        return '/vecino/home';
+      }
       return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/operador/home',
+        builder: (context, state) => const Scaffold(
+          body: Center(child: Text('Panel operador')),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

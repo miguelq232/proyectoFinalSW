@@ -44,7 +44,6 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
 
-    // TODO: conectar con backend Spring Boot
     final auth = context.read<AuthProvider>();
     final error = await auth.login(
       _emailController.text.trim(),
@@ -60,7 +59,12 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    context.go('/vecino/home');
+    final rol = auth.rol.toUpperCase();
+    if (rol == 'ADMINISTRADOR' || rol == 'OPERADOR') {
+      context.go('/operador/home');
+    } else {
+      context.go('/vecino/home');
+    }
   }
 
   @override

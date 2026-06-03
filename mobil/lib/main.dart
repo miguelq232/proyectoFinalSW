@@ -4,6 +4,7 @@ import 'package:mobil/config/constants.dart';
 import 'package:mobil/config/routes.dart';
 import 'package:mobil/config/theme.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
+import 'package:mobil/modules/vecino/providers/vecino_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -14,8 +15,11 @@ void main() async {
   await authProvider.loadSession();
 
   runApp(
-    ChangeNotifierProvider.value(
-      value: authProvider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: authProvider),
+        ChangeNotifierProvider(create: (_) => VecinoProvider()),
+      ],
       child: MobilApp(authProvider: authProvider),
     ),
   );

@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
-import 'package:mobil/shared/data/mock_scan_data.dart';
-import 'package:mobil/shared/widgets/scan_history_tile.dart';
+import 'package:mobil/modules/vecino/providers/vecino_provider.dart';
 import 'package:provider/provider.dart';
 
-class VecinoDashboardPage extends StatelessWidget {
+class VecinoDashboardPage extends StatefulWidget {
   const VecinoDashboardPage({super.key});
 
   @override
+  State<VecinoDashboardPage> createState() => _VecinoDashboardPageState();
+}
+
+class _VecinoDashboardPageState extends State<VecinoDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfileIfNeeded());
+  }
+
+  void _loadProfileIfNeeded() {
+    final auth = context.read<AuthProvider>();
+    final vecino = context.read<VecinoProvider>();
+
+    if (vecino.perfil == null && auth.token.isNotEmpty) {
+      vecino.loadProfile(auth.token);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final nombre = context.watch<AuthProvider>().nombre;
-    final recientes = MockScanData.historial.take(5).toList();
+    final auth = context.watch<AuthProvider>();
+    final vecino = context.watch<VecinoProvider>();
+    final nombre = vecino.perfil?.nombre ?? auth.nombre;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inicio')),
@@ -32,6 +52,44 @@ class VecinoDashboardPage extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.stars,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Puntos acumulados',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${vecino.perfil?.puntosAcumulados ?? 0}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             height: 120,
@@ -49,23 +107,6 @@ class VecinoDashboardPage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 32),
-          Text(
-            'Últimos escaneos',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Historial hardcodeado — 5 registros recientes',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 12),
-          // TODO: conectar con backend Spring Boot
-          ...recientes.map((item) => ScanHistoryTile(item: item)),
         ],
       ),
     );
