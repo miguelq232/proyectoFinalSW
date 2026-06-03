@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -53,6 +54,7 @@ public class GpsService {
         );
     }
 
+    @Transactional
     public List<CamionUbicacionDTO> obtenerUbicacionesVivas() {
         List<CamionUbicacionDTO> lista = new ArrayList<>();
         List<Camion> camiones = camionRepository.findAll();
@@ -66,6 +68,7 @@ public class GpsService {
         return lista;
     }
 
+    @Transactional
     public List<CamionUbicacionDTO> obtenerUbicacionesPorZona(Long zonaId) {
         List<CamionUbicacionDTO> lista = new ArrayList<>();
         List<Camion> camiones = camionRepository.findAll();

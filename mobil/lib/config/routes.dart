@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:mobil/modules/auth/pages/login_page.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
 import 'package:mobil/modules/vecino/pages/dashboard_page.dart';
-import 'package:mobil/modules/vecino/pages/history_page.dart';
 import 'package:mobil/modules/vecino/pages/profile_page.dart';
+import 'package:mobil/modules/vecino/pages/radar_page.dart';
 import 'package:mobil/modules/vecino/pages/scan_page.dart';
 import 'package:mobil/shared/widgets/vecino_shell.dart';
 
@@ -61,8 +61,8 @@ GoRouter createAppRouter(AuthProvider authProvider) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/vecino/history',
-                builder: (context, state) => const HistoryPage(),
+                path: '/vecino/radar',
+                builder: (context, state) => const RadarPage(),
               ),
             ],
           ),

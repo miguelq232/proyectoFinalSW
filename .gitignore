@@ -170,6 +170,8 @@ Desktop.ini
 # =============================================================================
 *.log
 logs/
+logs/igcsscz.log
+backend/logs/igcsscz.log
 tmp/
 temp/
 *.tmp
