@@ -1,167 +1,70 @@
-import { useState, useEffect } from "react"
-import { 
-  MapPin, Plus, Edit2, Trash2, Users, Truck, Search,
-  AlertCircle, RefreshCw, Loader2, X, Globe, Radio
+import {
+  MapPin,
+  Plus,
+  Edit2,
+  Trash2,
+  Users,
+  Truck,
+  Search,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+  X,
+  Globe,
+  Radio,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { zonasService, type ZonaResponse, type ZonaRequest } from "@/modules/admin/zona/services/zonasService"
 import MapTracker from "@/shared/components/MapTracker"
-
+import { useZonas } from "@/modules/admin/zona/hooks/useZonas"
 
 export default function ZonasPage() {
-  const [zonas, setZonas] = useState<ZonaResponse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Filtros
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
-
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE")
-  const [editingZonaId, setEditingZonaId] = useState<number | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-
-  // Form Fields
-  const [nombre, setNombre] = useState("")
-  const [descripcion, setDescripcion] = useState("")
-  const [latitudCentro, setLatitudCentro] = useState<number | null>(null)
-  const [longitudCentro, setLongitudCentro] = useState<number | null>(null)
-  const [radioKm, setRadioKm] = useState<number | null>(null)
-  const [activa, setActiva] = useState(true)
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  async function fetchData() {
-    setLoading(true)
-    setError(null)
-    try {
-      const zData = await zonasService.getAll()
-      setZonas(zData)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar catálogo de zonas geográficas")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function openCreateModal() {
-    setModalMode("CREATE")
-    setEditingZonaId(null)
-    setNombre("")
-    setDescripcion("")
-    setLatitudCentro(null)
-    setLongitudCentro(null)
-    setRadioKm(null)
-    setActiva(true)
-    setFormError(null)
-    setIsModalOpen(true)
-  }
-
-  function openEditModal(zona: ZonaResponse) {
-    setModalMode("EDIT")
-    setEditingZonaId(zona.id)
-    setNombre(zona.nombre)
-    setDescripcion(zona.descripcion || "")
-    setLatitudCentro(zona.latitudCentro ?? null)
-    setLongitudCentro(zona.longitudCentro ?? null)
-    setRadioKm(zona.radioKm ?? null)
-    setActiva(zona.activa)
-    setFormError(null)
-    setIsModalOpen(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError(null)
-    setSubmitting(true)
-
-    if (!nombre) {
-      setFormError("Por favor completa los campos requeridos")
-      setSubmitting(false)
-      return
-    }
-
-    if (latitudCentro === null || longitudCentro === null) {
-      setFormError("Por favor selecciona la ubicación del centro de la zona haciendo clic sobre el mapa")
-      setSubmitting(false)
-      return
-    }
-
-    const payload: ZonaRequest = {
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim() || undefined,
-      latitudCentro: latitudCentro !== null ? Number(latitudCentro) : undefined,
-      longitudCentro: longitudCentro !== null ? Number(longitudCentro) : undefined,
-      radioKm: radioKm !== null ? Number(radioKm) : undefined,
-      activa,
-    }
-
-    try {
-      if (modalMode === "CREATE") {
-        await zonasService.create(payload)
-      } else {
-        if (!editingZonaId) return
-        await zonasService.update(editingZonaId, payload)
-      }
-      setIsModalOpen(false)
-      fetchData()
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al guardar la zona geográfica")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handleToggleActive(zona: ZonaResponse) {
-    try {
-      setZonas(prev => prev.map(z => z.id === zona.id ? { ...z, activa: !z.activa } : z))
-      await zonasService.toggleActive(zona.id)
-    } catch (err) {
-      setZonas(prev => prev.map(z => z.id === zona.id ? { ...z, activa: zona.activa } : z))
-      alert(err instanceof Error ? err.message : "Error al cambiar estado de la zona")
-    }
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm("¿Está seguro de eliminar esta zona permanentemente? Esto desvinculará a los camiones y vecinos asociados.")) return
-    try {
-      await zonasService.delete(id)
-      setZonas(prev => prev.filter(z => z.id !== id))
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "No se pudo eliminar la zona")
-    }
-  }
-
-  const filteredZonas = zonas.filter(z => {
-    const term = search.toLowerCase()
-    const matchesSearch = 
-      z.nombre.toLowerCase().includes(term) ||
-      (z.descripcion && z.descripcion.toLowerCase().includes(term))
-      
-    const matchesStatus = statusFilter === "ALL" || 
-      (statusFilter === "ACTIVA" && z.activa) || 
-      (statusFilter === "INACTIVA" && !z.activa)
-
-    return matchesSearch && matchesStatus
-  })
+  const {
+    loading,
+    error,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    isModalOpen,
+    setIsModalOpen,
+    modalMode,
+    submitting,
+    formError,
+    nombre,
+    setNombre,
+    descripcion,
+    setDescripcion,
+    latitudCentro,
+    setLatitudCentro,
+    longitudCentro,
+    setLongitudCentro,
+    radioKm,
+    setRadioKm,
+    activa,
+    setActiva,
+    fetchData,
+    openCreateModal,
+    openEditModal,
+    handleSubmit,
+    handleToggleActive,
+    handleDelete,
+    filteredZonas,
+  } = useZonas()
 
   return (
     <div className="p-6 md:p-10 space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1 text-left">
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Gestión de Zonas</h1>
-          <p className="text-neutral-500">Administra los distritos, límites geográficos y áreas de cobertura del servicio.</p>
+          <p className="text-neutral-500">
+            Administra los distritos, límites geográficos y áreas de cobertura del servicio.
+          </p>
         </div>
-        <Button 
-          type="button" 
+        <Button
+          type="button"
           onClick={openCreateModal}
           className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm transition-all flex items-center gap-2"
         >
@@ -191,14 +94,14 @@ export default function ZonasPage() {
             <option value="ACTIVA">Zonas Activas</option>
             <option value="INACTIVA">Zonas Inactivas</option>
           </select>
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={fetchData} 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={fetchData}
             className="h-10 hover:bg-green-50 border-neutral-200 shrink-0 text-neutral-600 flex items-center gap-2"
             disabled={loading}
           >
-            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Recargar
           </Button>
         </div>
@@ -222,14 +125,16 @@ export default function ZonasPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <MapPin className="size-12 text-neutral-300 mb-3" />
             <p className="text-neutral-600 font-semibold text-lg">No se encontraron zonas de recolección</p>
-            <p className="text-neutral-400 text-sm mt-1 max-w-sm">Prueba ajustando tus parámetros de búsqueda o registra una nueva zona de cobertura.</p>
+            <p className="text-neutral-400 text-sm mt-1 max-w-sm">
+              Prueba ajustando tus parámetros de búsqueda o registra una nueva zona de cobertura.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredZonas.map((zona) => (
-            <div 
-              key={zona.id} 
+            <div
+              key={zona.id}
               className="bg-white rounded-2xl border border-neutral-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all overflow-hidden flex flex-col group text-left"
             >
               {/* Header */}
@@ -238,16 +143,16 @@ export default function ZonasPage() {
                   <span className="flex size-8 items-center justify-center rounded-lg bg-green-600 text-white shadow-inner">
                     <MapPin className="size-4" />
                   </span>
-                  <span className="font-bold text-neutral-800 tracking-tight text-base">
-                    {zona.nombre}
-                  </span>
+                  <span className="font-bold text-neutral-800 tracking-tight text-base">{zona.nombre}</span>
                 </div>
-                
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  zona.activa 
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                    : "bg-neutral-100 text-neutral-700 border border-neutral-200"
-                }`}>
+
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    zona.activa
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-neutral-100 text-neutral-700 border border-neutral-200"
+                  }`}
+                >
                   {zona.activa ? "ACTIVA" : "INACTIVA"}
                 </span>
               </div>
@@ -264,14 +169,18 @@ export default function ZonasPage() {
                     <p className="text-neutral-400 font-medium flex items-center gap-1">
                       <Radio className="size-3 text-green-600" /> Radio
                     </p>
-                    <p className="font-semibold text-neutral-800">{zona.radioKm ? `${zona.radioKm} Kilómetros` : "—"}</p>
+                    <p className="font-semibold text-neutral-800">
+                      {zona.radioKm ? `${zona.radioKm} Kilómetros` : "—"}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-neutral-400 font-medium flex items-center gap-1">
                       <Globe className="size-3 text-blue-600" /> Centro
                     </p>
                     {zona.latitudCentro && zona.longitudCentro ? (
-                      <p className="font-semibold text-neutral-800 tracking-tight font-mono">{zona.latitudCentro.toFixed(4)}, {zona.longitudCentro.toFixed(4)}</p>
+                      <p className="font-semibold text-neutral-800 tracking-tight font-mono">
+                        {zona.latitudCentro.toFixed(4)}, {zona.longitudCentro.toFixed(4)}
+                      </p>
                     ) : (
                       <p className="font-semibold text-neutral-400">Sin ubicar</p>
                     )}
@@ -350,7 +259,7 @@ export default function ZonasPage() {
               <h2 className="text-xl font-bold text-neutral-900">
                 {modalMode === "CREATE" ? "Registrar Nueva Zona" : "Editar Zona"}
               </h2>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-full hover:bg-green-100 text-neutral-500 transition-colors"
               >
@@ -368,8 +277,10 @@ export default function ZonasPage() {
 
               {/* Fila: Nombre */}
               <div className="space-y-1.5">
-                <Label htmlFor="nombre" className="font-semibold text-neutral-700">Nombre de la Zona *</Label>
-                <Input 
+                <Label htmlFor="nombre" className="font-semibold text-neutral-700">
+                  Nombre de la Zona *
+                </Label>
+                <Input
                   id="nombre"
                   required
                   value={nombre}
@@ -381,7 +292,9 @@ export default function ZonasPage() {
 
               {/* Fila: Descripción */}
               <div className="space-y-1.5">
-                <Label htmlFor="descripcion" className="font-semibold text-neutral-700">Descripción</Label>
+                <Label htmlFor="descripcion" className="font-semibold text-neutral-700">
+                  Descripción
+                </Label>
                 <textarea
                   id="descripcion"
                   value={descripcion}
@@ -394,8 +307,10 @@ export default function ZonasPage() {
 
               {/* Fila: Radio Geográfico */}
               <div className="space-y-1.5">
-                <Label htmlFor="radioKm" className="font-semibold text-neutral-700">Radio de Cobertura (Km)</Label>
-                <Input 
+                <Label htmlFor="radioKm" className="font-semibold text-neutral-700">
+                  Radio de Cobertura (Km)
+                </Label>
+                <Input
                   id="radioKm"
                   type="number"
                   step="any"
@@ -434,7 +349,10 @@ export default function ZonasPage() {
                     }
                     zoom={13}
                     circleArea={
-                      latitudCentro !== null && longitudCentro !== null && radioKm !== null && Number(radioKm) > 0
+                      latitudCentro !== null &&
+                      longitudCentro !== null &&
+                      radioKm !== null &&
+                      Number(radioKm) > 0
                         ? {
                             center: [Number(latitudCentro), Number(longitudCentro)],
                             radiusMeters: Number(radioKm) * 1000,
@@ -452,7 +370,6 @@ export default function ZonasPage() {
                   Haz clic en cualquier punto del mapa para fijar el centro de la zona.
                 </p>
               </div>
-
 
               {/* Activa Toggle en Modal */}
               <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
@@ -472,23 +389,25 @@ export default function ZonasPage() {
                 </button>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-neutral-800">Estado Activo</p>
-                  <p className="text-xs text-neutral-500">Si se desactiva, los vecinos y camiones asociados no verán esta zona como activa.</p>
+                  <p className="text-xs text-neutral-500">
+                    Si se desactiva, los vecinos y camiones asociados no verán esta zona como activa.
+                  </p>
                 </div>
               </div>
 
               {/* Botones de acción del Modal */}
               <footer className="pt-4 border-t border-neutral-100 flex items-center justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsModalOpen(false)}
                   className="border-neutral-200 text-neutral-700"
                   disabled={submitting}
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="bg-green-600 hover:bg-green-700 text-white font-semibold flex items-center gap-2"
                   disabled={submitting}
                 >
