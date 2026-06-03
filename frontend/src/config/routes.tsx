@@ -4,12 +4,12 @@ import LoginPage from "@/modules/auth/pages/LoginPage"
 import RegisterPage from "@/modules/auth/pages/RegisterPage"
 import DashboardPage from "@/modules/dashboard/pages/DashboardPage"
 import HomePage from "@/modules/home/pages/HomePage"
-import { ModulePlaceholder } from "@/modules/home/pages/ModulePlaceholder"
 import OperadorZonePage from "@/modules/operador/zona/pages/OperadorZonePage"
 import UsuariosPage from "@/modules/admin/usuarios/pages/UsuariosPage"
 import CamionesPage from "@/modules/admin/camion/pages/CamionesPage"
 import ZonasPage from "@/modules/admin/zona/pages/ZonasPage"
 import GpsTrackingPage from "@/modules/admin/gps/pages/GpsTrackingPage"
+import ReportesPage from "@/modules/admin/reportes/pages/ReportesPage"
 import VecinoProfilePage from "@/modules/vecino/perfil/pages/VecinoProfilePage"
 import VecinoTrackingPage from "@/modules/vecino/mapa/pages/VecinoTrackingPage"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
@@ -50,7 +50,7 @@ export function AppRoutes() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="camiones" element={<CamionesPage />} />
           <Route path="zonas" element={<ZonasPage />} />
-          <Route path="reportes" element={<ModulePlaceholder titulo="Reportes" />} />
+          <Route path="reportes" element={<ReportesPage />} />
 
           {/* Rutas de Operario */}
           <Route path="operador" element={<OperadorZonePage />} />
