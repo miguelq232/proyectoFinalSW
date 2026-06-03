@@ -11,6 +11,8 @@ public interface VecinoRepository extends JpaRepository<Vecino, Long> {
 
     Optional<Vecino> findByEmailIgnoreCase(String email);
 
+    Optional<Vecino> findByCodigoQR(String codigoQR);
+
     @Query("SELECT v.zona.nombre, COUNT(v) FROM Vecino v WHERE v.zona IS NOT NULL GROUP BY v.zona.id, v.zona.nombre ORDER BY v.zona.nombre")
     List<Object[]> countVecinosGroupByZona();
 }

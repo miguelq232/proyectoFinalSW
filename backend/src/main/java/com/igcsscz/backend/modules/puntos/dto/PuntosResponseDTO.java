@@ -8,10 +8,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PuntosDTO {
+public class PuntosResponseDTO {
 
     private Long id;
     private Long vecinoId;
+    private String vecinoNombre;
     private String tipoResiduo;
     private Double cantidad;
     private Integer puntosOtorgados;
