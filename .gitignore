@@ -1,22 +1,169 @@
-# backend
-backend/target/
-backend/.mvn/
-backend/*.class
+# =============================================================================
+# Variables de entorno y secretos (nunca subir credenciales)
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.*.example
 
-# frontend
+# =============================================================================
+# Backend (Spring Boot / Maven)
+# =============================================================================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/*.class
+backend/*.jar
+backend/*.war
+backend/*.ear
+backend/hs_err_pid*
+backend/replay_pid*
+
+# =============================================================================
+# Frontend (Vite / React / Node)
+# =============================================================================
 frontend/node_modules/
 frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/*.local
+frontend/coverage/
+frontend/.eslintcache
 
-# ia
-ia/__pycache__/
-ia/.venv/
-ia/*.pyc
+# Node (por si hay scripts en la raíz)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# mobil
+# =============================================================================
+# Móvil (Flutter / Dart)
+# =============================================================================
 mobil/.dart_tool/
+mobil/.flutter-plugins
+mobil/.flutter-plugins-dependencies
+mobil/.packages
+mobil/.pub-cache/
+mobil/.pub/
 mobil/build/
+mobil/**/doc/api/
+mobil/**/*.iml
+mobil/.idea/
+mobil/app.*.symbols
+mobil/app.*.map.json
 
-# general
-.env
+# =============================================================================
+# Python / IA — datasets y modelos (muy pesados, no versionar)
+# =============================================================================
+# Modelos entrenados
+*.h5
+*.hdf5
+*.keras
+*.pt
+*.pth
+*.onnx
+*.pb
+*.tflite
+*.weights
+*.ckpt
+*.safetensors
+
+# Datasets e imágenes de entrenamiento
+**/data/dataset*/
+**/data/dataset_*/
+**/datasets/
+dataset/
+dataset_*/
+
+# Artefactos de entrenamiento
+runs/
+wandb/
+mlruns/
+tensorboard/
+checkpoints/
+weights/
+
+ia/__pycache__/
+ia/**/__pycache__/
+ia/.venv/
+ia/venv/
+ia/*.pyc
+ia/*.pyo
+ia/.pytest_cache/
+ia/.mypy_cache/
+ia/.ruff_cache/
+ia/*.egg-info/
+ia/dist/
+ia/build/
+ia/data/
+
+proyecto_reciclaje_ia/__pycache__/
+proyecto_reciclaje_ia/**/__pycache__/
+proyecto_reciclaje_ia/.venv/
+proyecto_reciclaje_ia/venv/
+proyecto_reciclaje_ia/*.pyc
+proyecto_reciclaje_ia/.pytest_cache/
+proyecto_reciclaje_ia/.mypy_cache/
+proyecto_reciclaje_ia/data/
+proyecto_reciclaje_ia/**/*.h5
+proyecto_reciclaje_ia/**/*.hdf5
+proyecto_reciclaje_ia/**/*.keras
+proyecto_reciclaje_ia/**/*.pt
+proyecto_reciclaje_ia/**/*.pth
+
+# =============================================================================
+# Arduino (si genera builds locales)
+# =============================================================================
+arduino/build/
+*.hex
+
+# =============================================================================
+# IDEs y editores
+# =============================================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.project
+.classpath
+.settings/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# =============================================================================
+# Sistema operativo
+# =============================================================================
 .DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =============================================================================
+# Logs y temporales
+# =============================================================================
 *.log
+logs/
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# =============================================================================
+# Cobertura y cachés varios
+# =============================================================================
+coverage/
+.nyc_output/
+.cache/
+*.cache

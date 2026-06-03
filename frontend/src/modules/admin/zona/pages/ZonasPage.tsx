@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { zonasService, type ZonaResponse, type ZonaRequest } from "../services/zonasService"
+import { zonasService, type ZonaResponse, type ZonaRequest } from "@/modules/admin/zona/services/zonasService"
 import MapTracker from "@/shared/components/MapTracker"
 
 

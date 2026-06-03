@@ -8,7 +8,7 @@ cd backend
 mvn spring-boot:run
 
 cd frontend
-npm run de
+npm run dev
 
 admin@igcsscz.com
 admin123

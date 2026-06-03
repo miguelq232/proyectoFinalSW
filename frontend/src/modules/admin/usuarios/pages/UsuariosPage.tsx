@@ -1,200 +1,71 @@
-import { useState, useEffect } from "react"
-import { 
-  Search, UserPlus, Edit2, Trash2, Shield, Truck, Home, 
-  RefreshCw, AlertCircle, MapPin, Loader2, X 
+import {
+  Search,
+  UserPlus,
+  Edit2,
+  Trash2,
+  Shield,
+  Truck,
+  Home,
+  RefreshCw,
+  AlertCircle,
+  MapPin,
+  Loader2,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { usuariosService, type UsuarioResponse, type UsuarioRequest } from "../services/usuariosService"
-import { zonasService, type ZonaResponse } from "../services/zonasService"
+import { useUsuarios } from "@/modules/admin/usuarios/hooks/useUsuarios"
 
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState<UsuarioResponse[]>([])
-  const [zonas, setZonas] = useState<ZonaResponse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Filtros
-  const [search, setSearch] = useState("")
-  const [roleFilter, setRoleFilter] = useState<string>("ALL")
-  
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE")
-  const [editingUserId, setEditingUserId] = useState<number | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-
-  // Form Fields
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [nombre, setNombre] = useState("")
-  const [apellido, setApellido] = useState("")
-  const [telefono, setTelefono] = useState("")
-  const [rol, setRol] = useState<"ADMINISTRADOR" | "OPERADOR" | "VECINO">("VECINO")
-  const [activo, setActivo] = useState(true)
-  
-  // Operador Fields
-  const [licencia, setLicencia] = useState("")
-  const [turno, setTurno] = useState("")
-
-  // Vecino Fields
-  const [direccion, setDireccion] = useState("")
-  const [latitud, setLatitud] = useState<number | "">("")
-  const [longitud, setLongitud] = useState<number | "">("")
-  const [zonaId, setZonaId] = useState<number | "">("")
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  async function fetchData() {
-    setLoading(true)
-    setError(null)
-    try {
-      const [uData, zData] = await Promise.all([
-        usuariosService.getAll(),
-        zonasService.getAll()
-      ])
-      setUsuarios(uData)
-      setZonas(zData)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar datos")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function openCreateModal() {
-    setModalMode("CREATE")
-    setEditingUserId(null)
-    setEmail("")
-    setPassword("")
-    setNombre("")
-    setApellido("")
-    setTelefono("")
-    setRol("VECINO")
-    setActivo(true)
-    setLicencia("")
-    setTurno("")
-    setDireccion("")
-    setLatitud("")
-    setLongitud("")
-    setZonaId("")
-    setFormError(null)
-    setIsModalOpen(true)
-  }
-
-  function openEditModal(user: UsuarioResponse) {
-    setModalMode("EDIT")
-    setEditingUserId(user.id)
-    setEmail(user.email)
-    setPassword("") // Empty password means unchanged on edit
-    setNombre(user.nombre)
-    setApellido(user.apellido)
-    setTelefono(user.telefono || "")
-    setRol(user.rol)
-    setActivo(user.activo)
-    setLicencia(user.licencia || "")
-    setTurno(user.turno || "")
-    setDireccion(user.direccion || "")
-    setLatitud(user.latitud ?? "")
-    setLongitud(user.longitud ?? "")
-    setZonaId(user.zonaId ?? "")
-    setFormError(null)
-    setIsModalOpen(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError(null)
-    setSubmitting(true)
-
-    // Validations
-    if (!email || !nombre || !apellido || !rol) {
-      setFormError("Por favor completa los campos requeridos")
-      setSubmitting(false)
-      return
-    }
-
-    if (modalMode === "CREATE" && !password) {
-      setFormError("La contraseña es obligatoria para nuevos usuarios")
-      setSubmitting(false)
-      return
-    }
-
-    const payload: UsuarioRequest = {
-      email,
-      nombre,
-      apellido,
-      telefono: telefono || undefined,
-      rol,
-      activo,
-      password: password || undefined,
-    }
-
-    if (rol === "OPERADOR") {
-      payload.licencia = licencia || undefined
-      payload.turno = turno || undefined
-    } else if (rol === "VECINO") {
-      payload.direccion = direccion || undefined
-      payload.latitud = latitud !== "" ? Number(latitud) : undefined
-      payload.longitud = longitud !== "" ? Number(longitud) : undefined
-      payload.zonaId = zonaId !== "" ? Number(zonaId) : undefined
-    }
-
-    try {
-      if (modalMode === "CREATE") {
-        await usuariosService.create(payload)
-      } else {
-        if (!editingUserId) return
-        await usuariosService.update(editingUserId, payload)
-      }
-      setIsModalOpen(false)
-      fetchData()
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al procesar la solicitud")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handleToggleActive(user: UsuarioResponse) {
-    try {
-      setUsuarios(prev => prev.map(u => u.id === user.id ? { ...u, activo: !u.activo } : u))
-      await usuariosService.toggleActive(user.id)
-    } catch (err) {
-      // Revert in case of failure
-      setUsuarios(prev => prev.map(u => u.id === user.id ? { ...u, activo: user.activo } : u))
-      alert(err instanceof Error ? err.message : "Error al cambiar estado")
-    }
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm("¿Está seguro de eliminar este usuario permanentemente?")) return
-    try {
-      await usuariosService.delete(id)
-      setUsuarios(prev => prev.filter(u => u.id !== id))
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "No se pudo eliminar el usuario")
-    }
-  }
-
-  // Filtrado de la lista de usuarios
-  const filteredUsuarios = usuarios.filter((u) => {
-    const term = search.toLowerCase()
-    const matchesSearch = 
-      u.nombre.toLowerCase().includes(term) ||
-      u.apellido.toLowerCase().includes(term) ||
-      u.email.toLowerCase().includes(term) ||
-      (u.telefono && u.telefono.includes(term))
-    
-    const matchesRole = roleFilter === "ALL" || u.rol === roleFilter
-
-    return matchesSearch && matchesRole
-  })
+  const {
+    zonas,
+    loading,
+    error,
+    search,
+    setSearch,
+    roleFilter,
+    setRoleFilter,
+    isModalOpen,
+    setIsModalOpen,
+    modalMode,
+    submitting,
+    formError,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    nombre,
+    setNombre,
+    apellido,
+    setApellido,
+    telefono,
+    setTelefono,
+    rol,
+    setRol,
+    activo,
+    setActivo,
+    licencia,
+    setLicencia,
+    turno,
+    setTurno,
+    direccion,
+    setDireccion,
+    latitud,
+    setLatitud,
+    longitud,
+    setLongitud,
+    zonaId,
+    setZonaId,
+    fetchData,
+    openCreateModal,
+    openEditModal,
+    handleSubmit,
+    handleToggleActive,
+    handleDelete,
+    filteredUsuarios,
+  } = useUsuarios()
 
   return (
     <div className="p-6 md:p-10 space-y-6">
@@ -203,8 +74,8 @@ export default function UsuariosPage() {
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Gestión de Usuarios</h1>
           <p className="text-neutral-500">Administra a los vecinos, operadores y administradores del sistema.</p>
         </div>
-        <Button 
-          type="button" 
+        <Button
+          type="button"
           onClick={openCreateModal}
           className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm transition-all flex items-center gap-2"
         >
@@ -235,14 +106,14 @@ export default function UsuariosPage() {
             <option value="OPERADOR">Operadores</option>
             <option value="VECINO">Vecinos</option>
           </select>
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={fetchData} 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={fetchData}
             className="h-10 hover:bg-green-50 border-neutral-200 shrink-0 text-neutral-600 flex items-center gap-2"
             disabled={loading}
           >
-            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Recargar
           </Button>
         </div>
@@ -266,7 +137,9 @@ export default function UsuariosPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Shield className="size-12 text-neutral-300 mb-3" />
             <p className="text-neutral-600 font-semibold text-lg">No se encontraron usuarios</p>
-            <p className="text-neutral-400 text-sm mt-1 max-w-sm">Prueba ajustando tus parámetros de búsqueda o registra a un nuevo usuario usando el botón superior.</p>
+            <p className="text-neutral-400 text-sm mt-1 max-w-sm">
+              Prueba ajustando tus parámetros de búsqueda o registra a un nuevo usuario usando el botón superior.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -288,38 +161,54 @@ export default function UsuariosPage() {
                   <tr key={user.id} className="hover:bg-neutral-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-neutral-900">{user.nombre} {user.apellido}</span>
+                        <span className="font-semibold text-neutral-900">
+                          {user.nombre} {user.apellido}
+                        </span>
                         <span className="text-xs text-neutral-500">{user.email}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        user.rol === "ADMINISTRADOR" 
-                          ? "bg-purple-50 text-purple-700 border border-purple-200" 
-                          : user.rol === "OPERADOR"
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          user.rol === "ADMINISTRADOR"
+                            ? "bg-purple-50 text-purple-700 border border-purple-200"
+                            : user.rol === "OPERADOR"
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        }`}
+                      >
                         {user.rol === "ADMINISTRADOR" && <Shield className="size-3" />}
                         {user.rol === "OPERADOR" && <Truck className="size-3" />}
                         {user.rol === "VECINO" && <Home className="size-3" />}
                         {user.rol}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-neutral-600">
-                      {user.telefono || "—"}
-                    </td>
+                    <td className="px-6 py-4 font-mono text-neutral-600">{user.telefono || "—"}</td>
                     <td className="px-6 py-4 text-xs">
                       {user.rol === "OPERADOR" && (
                         <div className="space-y-0.5">
-                          <p><span className="text-neutral-500 font-medium">Turno:</span> <span className="font-semibold text-neutral-700">{user.turno || "—"}</span></p>
-                          <p><span className="text-neutral-500 font-medium">Licencia:</span> <span className="font-semibold text-neutral-700">{user.licencia || "—"}</span></p>
+                          <p>
+                            <span className="text-neutral-500 font-medium">Turno:</span>{" "}
+                            <span className="font-semibold text-neutral-700">{user.turno || "—"}</span>
+                          </p>
+                          <p>
+                            <span className="text-neutral-500 font-medium">Licencia:</span>{" "}
+                            <span className="font-semibold text-neutral-700">{user.licencia || "—"}</span>
+                          </p>
                         </div>
                       )}
                       {user.rol === "VECINO" && (
                         <div className="space-y-0.5 max-w-xs truncate">
-                          <p><span className="text-neutral-500 font-medium">Zona:</span> <span className="font-semibold text-green-700">{user.zonaNombre || "Sin asignar"}</span></p>
-                          <p><span className="text-neutral-500 font-medium">Dir:</span> <span className="text-neutral-700" title={user.direccion || undefined}>{user.direccion || "—"}</span></p>
+                          <p>
+                            <span className="text-neutral-500 font-medium">Zona:</span>{" "}
+                            <span className="font-semibold text-green-700">{user.zonaNombre || "Sin asignar"}</span>
+                          </p>
+                          <p>
+                            <span className="text-neutral-500 font-medium">Dir:</span>{" "}
+                            <span className="text-neutral-700" title={user.direccion || undefined}>
+                              {user.direccion || "—"}
+                            </span>
+                          </p>
                         </div>
                       )}
                       {user.rol === "ADMINISTRADOR" && (
@@ -380,7 +269,7 @@ export default function UsuariosPage() {
               <h2 className="text-xl font-bold text-neutral-900">
                 {modalMode === "CREATE" ? "Registrar Nuevo Usuario" : "Editar Usuario"}
               </h2>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-full hover:bg-green-100 text-neutral-500 transition-colors"
               >
@@ -399,8 +288,10 @@ export default function UsuariosPage() {
               {/* Fila: Nombre y Apellido */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="nombre" className="font-semibold text-neutral-700">Nombre *</Label>
-                  <Input 
+                  <Label htmlFor="nombre" className="font-semibold text-neutral-700">
+                    Nombre *
+                  </Label>
+                  <Input
                     id="nombre"
                     required
                     value={nombre}
@@ -410,8 +301,10 @@ export default function UsuariosPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="apellido" className="font-semibold text-neutral-700">Apellido *</Label>
-                  <Input 
+                  <Label htmlFor="apellido" className="font-semibold text-neutral-700">
+                    Apellido *
+                  </Label>
+                  <Input
                     id="apellido"
                     required
                     value={apellido}
@@ -425,8 +318,10 @@ export default function UsuariosPage() {
               {/* Fila: Correo y Teléfono */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="font-semibold text-neutral-700">Correo Electrónico *</Label>
-                  <Input 
+                  <Label htmlFor="email" className="font-semibold text-neutral-700">
+                    Correo Electrónico *
+                  </Label>
+                  <Input
                     id="email"
                     type="email"
                     required
@@ -437,8 +332,10 @@ export default function UsuariosPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="telefono" className="font-semibold text-neutral-700">Teléfono</Label>
-                  <Input 
+                  <Label htmlFor="telefono" className="font-semibold text-neutral-700">
+                    Teléfono
+                  </Label>
+                  <Input
                     id="telefono"
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
@@ -451,11 +348,13 @@ export default function UsuariosPage() {
               {/* Fila: Rol y Contraseña */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="rol" className="font-semibold text-neutral-700">Rol *</Label>
+                  <Label htmlFor="rol" className="font-semibold text-neutral-700">
+                    Rol *
+                  </Label>
                   <select
                     id="rol"
                     value={rol}
-                    onChange={(e) => setRol(e.target.value as any)}
+                    onChange={(e) => setRol(e.target.value as typeof rol)}
                     className="w-full h-10 px-3 rounded-md border border-neutral-200 bg-white text-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-600/20 focus:border-green-600"
                   >
                     <option value="VECINO">Vecino</option>
@@ -467,7 +366,7 @@ export default function UsuariosPage() {
                   <Label htmlFor="password" className="font-semibold text-neutral-700">
                     Contraseña {modalMode === "CREATE" ? "*" : "(Dejar en blanco para no cambiar)"}
                   </Label>
-                  <Input 
+                  <Input
                     id="password"
                     type="password"
                     required={modalMode === "CREATE"}
@@ -487,8 +386,10 @@ export default function UsuariosPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="licencia" className="text-blue-900 font-medium">Categoría de Licencia</Label>
-                      <Input 
+                      <Label htmlFor="licencia" className="text-blue-900 font-medium">
+                        Categoría de Licencia
+                      </Label>
+                      <Input
                         id="licencia"
                         value={licencia}
                         onChange={(e) => setLicencia(e.target.value)}
@@ -497,7 +398,9 @@ export default function UsuariosPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="turno" className="text-blue-900 font-medium">Turno de Trabajo</Label>
+                      <Label htmlFor="turno" className="text-blue-900 font-medium">
+                        Turno de Trabajo
+                      </Label>
                       <select
                         id="turno"
                         value={turno}
@@ -520,7 +423,9 @@ export default function UsuariosPage() {
                     <MapPin className="size-4" /> Ubicación y Zona del Vecino
                   </p>
                   <div className="space-y-1.5">
-                    <Label htmlFor="zonaId" className="text-emerald-950 font-medium">Asignar Zona Geográfica</Label>
+                    <Label htmlFor="zonaId" className="text-emerald-950 font-medium">
+                      Asignar Zona Geográfica
+                    </Label>
                     <select
                       id="zonaId"
                       value={zonaId}
@@ -536,8 +441,10 @@ export default function UsuariosPage() {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="direccion" className="text-emerald-950 font-medium">Dirección Domiciliaria</Label>
-                    <Input 
+                    <Label htmlFor="direccion" className="text-emerald-950 font-medium">
+                      Dirección Domiciliaria
+                    </Label>
+                    <Input
                       id="direccion"
                       value={direccion}
                       onChange={(e) => setDireccion(e.target.value)}
@@ -547,8 +454,10 @@ export default function UsuariosPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="latitud" className="text-emerald-950 font-medium">Latitud Coordenada</Label>
-                      <Input 
+                      <Label htmlFor="latitud" className="text-emerald-950 font-medium">
+                        Latitud Coordenada
+                      </Label>
+                      <Input
                         id="latitud"
                         type="number"
                         step="any"
@@ -559,8 +468,10 @@ export default function UsuariosPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="longitud" className="text-emerald-950 font-medium">Longitud Coordenada</Label>
-                      <Input 
+                      <Label htmlFor="longitud" className="text-emerald-950 font-medium">
+                        Longitud Coordenada
+                      </Label>
+                      <Input
                         id="longitud"
                         type="number"
                         step="any"
@@ -592,23 +503,25 @@ export default function UsuariosPage() {
                 </button>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-neutral-800">Estado Activo</p>
-                  <p className="text-xs text-neutral-500">Determina si este usuario tiene acceso de ingreso o visualización.</p>
+                  <p className="text-xs text-neutral-500">
+                    Determina si este usuario tiene acceso de ingreso o visualización.
+                  </p>
                 </div>
               </div>
 
               {/* Botones de acción del Modal */}
               <footer className="pt-4 border-t border-neutral-100 flex items-center justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsModalOpen(false)}
                   className="border-neutral-200 text-neutral-700"
                   disabled={submitting}
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="bg-green-600 hover:bg-green-700 text-white font-semibold flex items-center gap-2"
                   disabled={submitting}
                 >

@@ -1,16 +1,17 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom"
 
 import LoginPage from "@/modules/auth/pages/LoginPage"
-import HomeDashboardPage from "@/modules/home/pages/DashboardPage"
+import RegisterPage from "@/modules/auth/pages/RegisterPage"
+import DashboardPage from "@/modules/dashboard/pages/DashboardPage"
 import HomePage from "@/modules/home/pages/HomePage"
-import UsuariosPage from "@/modules/home/pages/UsuariosPage"
-import CamionesPage from "@/modules/home/pages/CamionesPage"
-import ZonasPage from "@/modules/home/pages/ZonasPage"
-import GpsTrackingPage from "@/modules/home/pages/GpsTrackingPage"
-import OperadorZonePage from "@/modules/home/pages/OperadorZonePage"
-import VecinoProfilePage from "@/modules/home/pages/VecinoProfilePage"
-import VecinoTrackingPage from "@/modules/home/pages/VecinoTrackingPage"
 import { ModulePlaceholder } from "@/modules/home/pages/ModulePlaceholder"
+import OperadorZonePage from "@/modules/operador/zona/pages/OperadorZonePage"
+import UsuariosPage from "@/modules/admin/usuarios/pages/UsuariosPage"
+import CamionesPage from "@/modules/admin/camion/pages/CamionesPage"
+import ZonasPage from "@/modules/admin/zona/pages/ZonasPage"
+import GpsTrackingPage from "@/modules/admin/gps/pages/GpsTrackingPage"
+import VecinoProfilePage from "@/modules/vecino/perfil/pages/VecinoProfilePage"
+import VecinoTrackingPage from "@/modules/vecino/mapa/pages/VecinoTrackingPage"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { authService } from "@/modules/auth/services/authService"
 
@@ -30,6 +31,8 @@ export function AppRoutes() {
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         <Route
           path="/home"
@@ -40,7 +43,7 @@ export function AppRoutes() {
           }
         >
           <Route index element={<HomeIndexRedirect />} />
-          <Route path="dashboard" element={<HomeDashboardPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           
           {/* Rutas de Administrador */}
           <Route path="gps-tracking" element={<GpsTrackingPage />} />
@@ -62,5 +65,4 @@ export function AppRoutes() {
     </Router>
   )
 }
-
 

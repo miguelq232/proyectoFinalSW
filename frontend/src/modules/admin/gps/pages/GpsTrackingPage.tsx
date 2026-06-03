@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Truck, RefreshCw, AlertCircle, Loader2, Navigation, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { gpsService, type CamionUbicacion } from "../services/gpsService"
+import { gpsService, type CamionUbicacion } from "@/modules/admin/gps/services/gpsService"
 
 export default function GpsTrackingPage() {
   const [ubicaciones, setUbicaciones] = useState<CamionUbicacion[]>([])

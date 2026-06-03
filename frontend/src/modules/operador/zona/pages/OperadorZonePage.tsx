@@ -3,9 +3,9 @@ import { Truck, MapPin, Play, Square, Loader2, AlertCircle, ShieldAlert, Radio, 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { camionesService, type CamionResponse } from "../services/camionesService"
-import { zonasService, type ZonaResponse } from "../services/zonasService"
-import { gpsService } from "../services/gpsService"
+import { camionesService, type CamionResponse } from "@/modules/admin/camion/services/camionesService"
+import { zonasService, type ZonaResponse } from "@/modules/admin/zona/services/zonasService"
+import { gpsService } from "@/modules/admin/gps/services/gpsService"
 import { authService } from "@/modules/auth/services/authService"
 
 interface LogMessage {

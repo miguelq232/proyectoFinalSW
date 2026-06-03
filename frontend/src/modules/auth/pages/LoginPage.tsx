@@ -1,7 +1,7 @@
 import bgImage from "../../../assets/login.png"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { useState, type FormEvent } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -143,6 +143,16 @@ export default function LoginPage() {
                     "Iniciar sesión"
                   )}
                 </Button>
+
+                <p className="text-center text-sm text-white/90">
+                  ¿No tienes cuenta?{" "}
+                  <Link
+                    to="/register"
+                    className="font-semibold text-white underline underline-offset-2 hover:text-green-100"
+                  >
+                    Regístrate
+                  </Link>
+                </p>
               </form>
             </CardContent>
           </Card>
