@@ -16,10 +16,12 @@ admin123
 cd ia
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-cd mobile
 flutter clean 
 flutter pub get
+
+cd mobil
 flutter run -d 15187705CJ007699
+
 adb logcat flutter:D *:S 
 
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobil/modules/auth/providers/auth_provider.dart';
 import 'package:mobil/modules/vecino/providers/vecino_provider.dart';
 import 'package:provider/provider.dart';
@@ -88,7 +89,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'Código QR',
@@ -96,12 +97,22 @@ class _ProfilePageState extends State<ProfilePage> {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: QrImageView(
+                        data: perfil?.codigoQR ?? 'SIN-QR',
+                        version: QrVersions.auto,
+                        size: 200.0,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      perfil?.codigoQR?.isNotEmpty == true
-                          ? perfil!.codigoQR!
-                          : '—',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      'ID: VEC-${perfil?.id ?? '—'}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                   ],
                 ),

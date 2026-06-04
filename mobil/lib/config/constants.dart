@@ -22,7 +22,7 @@ class AppConstants {
 
   /// URL del microservicio FastAPI de IA. Configurar en `.env` como IA_URL.
   static String get iaPredictUrl =>
-      dotenv.env['IA_URL'] ?? 'http://192.168.0.19:8000/predecir';
+      dotenv.env['IA_URL'] ?? 'http://192.168.0.11:8000/predecir';
 
   static const Duration iaRequestTimeout = Duration(seconds: 30);
   static const double iaMinConfianza = 0.55;
