@@ -28,6 +28,8 @@ interface ConfigRowState {
   categoria: string
   puntosUnidad: string
   puntosKg: string
+  precioBsKg: string
+  metaMensualKg: string
   modoCalculo: ModoCalculo
   activo: boolean
   saveStatus: SaveStatus
@@ -40,6 +42,8 @@ function toRowState(item: ConfigPuntos): ConfigRowState {
     categoria: item.categoria,
     puntosUnidad: String(item.puntosUnidad ?? 0),
     puntosKg: String(item.puntosKg ?? 0),
+    precioBsKg: String(item.precioBsKg ?? 0),
+    metaMensualKg: String(item.metaMensualKg ?? 0),
     modoCalculo: item.modoCalculo,
     activo: item.activo,
     saveStatus: "idle",
@@ -81,6 +85,8 @@ export default function ConfigPuntosPage() {
   async function handleSave(row: ConfigRowState) {
     const puntosUnidad = Number.parseInt(row.puntosUnidad, 10)
     const puntosKg = Number.parseFloat(row.puntosKg)
+    const precioBsKg = Number.parseFloat(row.precioBsKg)
+    const metaMensualKg = Number.parseFloat(row.metaMensualKg)
 
     if (Number.isNaN(puntosUnidad) || puntosUnidad < 0) {
       updateRow(row.id, {
@@ -96,6 +102,20 @@ export default function ConfigPuntosPage() {
       })
       return
     }
+    if (Number.isNaN(precioBsKg) || precioBsKg < 0) {
+      updateRow(row.id, {
+        saveStatus: "error",
+        saveMessage: "Precio Bs/kg inválido",
+      })
+      return
+    }
+    if (Number.isNaN(metaMensualKg) || metaMensualKg < 0) {
+      updateRow(row.id, {
+        saveStatus: "error",
+        saveMessage: "Meta mensual inválida",
+      })
+      return
+    }
 
     updateRow(row.id, { saveStatus: "saving", saveMessage: null })
 
@@ -103,6 +123,8 @@ export default function ConfigPuntosPage() {
       const updated = await configPuntosService.update(row.id, {
         puntosUnidad,
         puntosKg,
+        precioBsKg,
+        metaMensualKg,
         modoCalculo: row.modoCalculo,
         activo: row.activo,
       })
@@ -169,12 +191,14 @@ export default function ConfigPuntosPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[1100px] text-left text-sm">
               <thead>
                 <tr className="border-b border-green-100 text-xs font-semibold uppercase tracking-wider text-green-800/80">
                   <th className="pb-3 pr-4">Categoría</th>
                   <th className="pb-3 pr-4">Puntos/Unidad</th>
                   <th className="pb-3 pr-4">Puntos/Kg</th>
+                  <th className="pb-3 pr-4">Precio Bs/Kg</th>
+                  <th className="pb-3 pr-4">Meta mensual (kg)</th>
                   <th className="pb-3 pr-4">Modo cálculo</th>
                   <th className="pb-3 pr-4 text-center">Activo</th>
                   <th className="pb-3 text-right">Acción</th>
@@ -212,6 +236,30 @@ export default function ConfigPuntosPage() {
                         value={row.puntosKg}
                         onChange={(e) =>
                           updateRow(row.id, { puntosKg: e.target.value, saveStatus: "idle" })
+                        }
+                        className="h-9 max-w-[7rem] border-green-200 focus-visible:ring-green-500/30"
+                      />
+                    </td>
+                    <td className="py-4 pr-4">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={row.precioBsKg}
+                        onChange={(e) =>
+                          updateRow(row.id, { precioBsKg: e.target.value, saveStatus: "idle" })
+                        }
+                        className="h-9 max-w-[7rem] border-green-200 focus-visible:ring-green-500/30"
+                      />
+                    </td>
+                    <td className="py-4 pr-4">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={row.metaMensualKg}
+                        onChange={(e) =>
+                          updateRow(row.id, { metaMensualKg: e.target.value, saveStatus: "idle" })
                         }
                         className="h-9 max-w-[7rem] border-green-200 focus-visible:ring-green-500/30"
                       />

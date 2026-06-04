@@ -53,6 +53,8 @@ public class ConfigPuntosService {
         config.setPuntosKg(request.getPuntosKg());
         config.setModoCalculo(request.getModoCalculo().trim().toUpperCase());
         config.setActivo(request.getActivo());
+        config.setPrecioBsKg(request.getPrecioBsKg());
+        config.setMetaMensualKg(request.getMetaMensualKg());
 
         return toResponseDTO(configPuntosRepository.save(config));
     }
@@ -127,6 +129,8 @@ public class ConfigPuntosService {
                 config.getPuntosUnidad(),
                 config.getPuntosKg(),
                 config.getModoCalculo(),
-                config.getActivo());
+                config.getActivo(),
+                config.getPrecioBsKg(),
+                config.getMetaMensualKg());
     }
 }

@@ -381,21 +381,29 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void inicializarConfigPuntos() {
-        saveConfigPuntos("GLASS", 15, 30.0, "UNIDAD", true);
-        saveConfigPuntos("METAL", 20, 40.0, "UNIDAD", true);
-        saveConfigPuntos("PAPER", 8, 16.0, "UNIDAD", true);
-        saveConfigPuntos("PET", 12, 25.0, "UNIDAD", true);
-        saveConfigPuntos("PLASTIC", 10, 20.0, "UNIDAD", true);
+        saveConfigPuntos("GLASS", 15, 30.0, "UNIDAD", true, 2.5, 50.0);
+        saveConfigPuntos("METAL", 20, 40.0, "UNIDAD", true, 4.0, 30.0);
+        saveConfigPuntos("PAPER", 8, 16.0, "UNIDAD", true, 0.8, 80.0);
+        saveConfigPuntos("PET", 12, 25.0, "UNIDAD", true, 1.5, 60.0);
+        saveConfigPuntos("PLASTIC", 10, 20.0, "UNIDAD", true, 1.2, 70.0);
     }
 
     private void saveConfigPuntos(
-            String categoria, int puntosUnidad, double puntosKg, String modoCalculo, boolean activo) {
+            String categoria,
+            int puntosUnidad,
+            double puntosKg,
+            String modoCalculo,
+            boolean activo,
+            double precioBsKg,
+            double metaMensualKg) {
         ConfigPuntos config = new ConfigPuntos();
         config.setCategoria(categoria);
         config.setPuntosUnidad(puntosUnidad);
         config.setPuntosKg(puntosKg);
         config.setModoCalculo(modoCalculo);
         config.setActivo(activo);
+        config.setPrecioBsKg(precioBsKg);
+        config.setMetaMensualKg(metaMensualKg);
         configPuntosRepository.save(config);
     }
 

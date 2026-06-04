@@ -22,4 +22,10 @@ public class ConfigPuntosRequestDTO {
 
     @NotNull(message = "El estado activo es obligatorio")
     private Boolean activo;
+
+    @NotNull(message = "El precio por kg es obligatorio")
+    private Double precioBsKg;
+
+    @NotNull(message = "La meta mensual en kg es obligatoria")
+    private Double metaMensualKg;
 }

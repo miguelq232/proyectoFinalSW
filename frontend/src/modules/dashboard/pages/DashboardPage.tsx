@@ -1,96 +1,120 @@
-import { useState, useEffect } from "react"
-import { MapPin, Sparkles, Truck, Users, Loader2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Loader2, MapPin, Truck, Users, UserCheck, UserCog } from "lucide-react"
 
 import { authService } from "@/modules/auth/services/authService"
-import { usuariosService } from "@/modules/admin/usuarios/services/usuariosService"
-import { camionesService } from "@/modules/admin/camion/services/camionesService"
-import { zonasService } from "@/modules/admin/zona/services/zonasService"
+import {
+  reportesService,
+  type ReporteResumen,
+} from "@/modules/admin/reportes/services/reportesService"
 
 export default function DashboardPage() {
   const nombre = authService.getNombre() ?? "Usuario"
-  const [totalUsuarios, setTotalUsuarios] = useState<number | string>("—")
-  const [camionesActivos, setCamionesActivos] = useState<number | string>("—")
-  const [zonasRegistradas, setZonasRegistradas] = useState<number | string>("—")
+  const [resumen, setResumen] = useState<ReporteResumen | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function loadStats() {
+    async function loadResumen() {
       try {
-        const [users, trucks, zones] = await Promise.all([
-          usuariosService.getAll(),
-          camionesService.getAll(),
-          zonasService.getAll()
-        ])
-        setTotalUsuarios(users.length)
-        setCamionesActivos(trucks.filter(t => t.estado === "ACTIVO").length)
-        setZonasRegistradas(zones.length)
+        setError(null)
+        const data = await reportesService.getResumen()
+        setResumen(data)
       } catch (e) {
-        console.error("Error al cargar estadísticas en dashboard:", e)
+        setError(e instanceof Error ? e.message : "Error al cargar resumen")
       } finally {
         setLoading(false)
       }
     }
-    loadStats()
+    loadResumen()
   }, [])
 
-  const stats = [
-    {
-      titulo: "Total usuarios",
-      valor: totalUsuarios,
-      icon: Users,
-      hint: "Registrados en el sistema",
-    },
-    {
-      titulo: "Camiones activos",
-      valor: camionesActivos,
-      icon: Truck,
-      hint: "En servicio actualmente",
-    },
-    {
-      titulo: "Zonas de recolección",
-      valor: zonasRegistradas,
-      icon: MapPin,
-      hint: "Distritos de cobertura activos",
-    },
-    {
-      titulo: "Total clasificaciones IA",
-      valor: "148", // Mock de clasificación para visualización premium
-      icon: Sparkles,
-      hint: "94.6% de precisión del modelo",
-    },
-  ] as const
+  const cards = useMemo(
+    () => [
+      {
+        titulo: "Total usuarios",
+        valor: resumen?.totalUsuarios,
+        icon: Users,
+        hint: "Registrados en el sistema",
+      },
+      {
+        titulo: "Vecinos",
+        valor: resumen?.totalVecinos,
+        icon: UserCheck,
+        hint: "Usuarios con rol vecino",
+      },
+      {
+        titulo: "Operadores",
+        valor: resumen?.totalOperadores,
+        icon: UserCog,
+        hint: "Personal de recolección",
+      },
+      {
+        titulo: "Total camiones",
+        valor: resumen?.totalCamiones,
+        icon: Truck,
+        hint: "Flota registrada",
+      },
+      {
+        titulo: "Camiones activos",
+        valor: resumen?.camionesActivos,
+        icon: Truck,
+        hint: "En servicio actualmente",
+      },
+      {
+        titulo: "Total zonas",
+        valor: resumen?.totalZonas,
+        icon: MapPin,
+        hint: "Distritos de cobertura",
+      },
+      {
+        titulo: "Zonas activas",
+        valor: resumen?.zonasActivas,
+        icon: MapPin,
+        hint: "Con recolección habilitada",
+      },
+    ],
+    [resumen]
+  )
 
   return (
     <div className="p-6 sm:p-10 text-left">
-      <header className="mb-8 border-b border-green-100 pb-8 flex justify-between items-center">
+      <header className="mb-8 flex items-center justify-between border-b border-green-100 pb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-green-900">
-            Panel de Control
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight text-green-900">Panel de Control</h1>
           <p className="mt-1.5 text-sm text-green-700 sm:text-base">
             Bienvenido, <span className="font-semibold text-green-800">{nombre}</span>
           </p>
         </div>
         {loading && (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-            <Loader2 className="size-3.5 animate-spin" /> Actualizando datos...
+          <span className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
+            <Loader2 className="size-3.5 animate-spin" /> Cargando datos...
           </span>
         )}
       </header>
 
+      {error && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ titulo, valor, icon: Icon, hint }) => (
+        {cards.map(({ titulo, valor, icon: Icon, hint }) => (
           <div
             key={titulo}
-            className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm hover:shadow-md hover:border-green-200 transition-all flex flex-col justify-between"
+            className="flex flex-col justify-between rounded-2xl border border-green-100 bg-white p-6 shadow-sm transition-all hover:border-green-200 hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-xs font-semibold tracking-wider text-green-700/80 uppercase">{titulo}</p>
-                <p className="text-4xl font-bold tabular-nums text-neutral-800 pt-2">{valor}</p>
-                <p className="text-[11px] text-neutral-400 pt-1">{hint}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-green-700/80">
+                  {titulo}
+                </p>
+                <p className="pt-2 text-4xl font-bold tabular-nums text-neutral-800">
+                  {loading || valor === undefined ? "—" : valor}
+                </p>
+                <p className="pt-1 text-[11px] text-neutral-400">{hint}</p>
               </div>
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600 border border-green-100 shadow-inner">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-green-100 bg-green-50 text-green-600 shadow-inner">
                 <Icon className="size-5" aria-hidden />
               </span>
             </div>

@@ -9,6 +9,8 @@ export interface ConfigPuntos {
   puntosKg: number
   modoCalculo: ModoCalculo
   activo: boolean
+  precioBsKg: number
+  metaMensualKg: number
 }
 
 export interface ConfigPuntosUpdateRequest {
@@ -16,6 +18,8 @@ export interface ConfigPuntosUpdateRequest {
   puntosKg: number
   modoCalculo: ModoCalculo
   activo: boolean
+  precioBsKg: number
+  metaMensualKg: number
 }
 
 export const configPuntosService = {

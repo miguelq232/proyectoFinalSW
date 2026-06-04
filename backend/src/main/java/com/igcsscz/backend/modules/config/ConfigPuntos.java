@@ -35,4 +35,10 @@ public class ConfigPuntos {
 
     @Column(nullable = false)
     private Boolean activo;
+
+    @Column(name = "precio_bs_kg", nullable = true)
+    private Double precioBsKg;
+
+    @Column(name = "meta_mensual_kg", nullable = true)
+    private Double metaMensualKg;
 }

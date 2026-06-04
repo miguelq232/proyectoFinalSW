@@ -15,4 +15,6 @@ public class ConfigPuntosResponseDTO {
     private Double puntosKg;
     private String modoCalculo;
     private Boolean activo;
+    private Double precioBsKg;
+    private Double metaMensualKg;
 }
