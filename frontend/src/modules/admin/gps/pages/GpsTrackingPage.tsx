@@ -2,7 +2,69 @@ import { useState, useEffect } from "react"
 import { Truck, RefreshCw, AlertCircle, Loader2, Navigation, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { gpsService, type CamionUbicacion } from "@/modules/admin/gps/services/gpsService"
+import { api, getErrorMessage } from "@/shared/services/api"
+
+// --- Types & Service (gpsService.ts) ---
+
+export interface CamionUbicacion {
+  camionId: number
+  placa: string
+  modelo: string | null
+  estado: string
+  operadorNombre: string
+  zonaId?: number | null
+  zonaNombre?: string | null
+  latitud: number
+  longitud: number
+  ultimaActualizacion: string
+}
+
+export interface CercaniaResponse {
+  cerca: boolean
+  distanciaMetros: number | null
+  placa: string | null
+  camionId: number | null
+  operadorNombre: string | null
+}
+
+export const gpsService = {
+  async actualizarUbicacion(camionId: number, latitud: number, longitud: number): Promise<void> {
+    try {
+      await api.post("/gps/actualizar", { camionId, latitud, longitud })
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getCamionesVivo(): Promise<CamionUbicacion[]> {
+    try {
+      const res = await api.get<CamionUbicacion[]>("/gps/camiones/vivo")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getCamionesPorZonaVivo(zonaId: number): Promise<CamionUbicacion[]> {
+    try {
+      const res = await api.get<CamionUbicacion[]>(`/gps/zona/${zonaId}/vivo`)
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async checkProximidad(): Promise<CercaniaResponse> {
+    try {
+      const res = await api.get<CercaniaResponse>("/gps/cercano")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+}
+
+// --- Page Component ---
 
 export default function GpsTrackingPage() {
   const [ubicaciones, setUbicaciones] = useState<CamionUbicacion[]>([])
@@ -13,7 +75,7 @@ export default function GpsTrackingPage() {
 
   useEffect(() => {
     fetchUbicaciones(true)
-    
+
     // Polling cada 5 segundos para actualizar el movimiento en tiempo real
     const interval = setInterval(() => {
       fetchUbicaciones(false)
@@ -27,7 +89,7 @@ export default function GpsTrackingPage() {
     try {
       const data = await gpsService.getCamionesVivo()
       setUbicaciones(data)
-      
+
       // Auto-centrar en el primer camión activo si existe y es la primera carga
       if (isFirstTime && data.length > 0) {
         setMapCenter([data[0].latitud, data[0].longitud])
@@ -70,14 +132,14 @@ export default function GpsTrackingPage() {
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Seguimiento GPS en Vivo</h1>
           <p className="text-neutral-500">Monitoreo cartográfico en tiempo real de todos los vehículos de basura activos en el sistema.</p>
         </div>
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={() => fetchUbicaciones(true)} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fetchUbicaciones(true)}
           className="border-neutral-200 text-neutral-600 self-start sm:self-center flex items-center gap-2"
           disabled={loading}
         >
-          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
           Sincronizar
         </Button>
       </header>
@@ -93,10 +155,10 @@ export default function GpsTrackingPage() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6 min-h-0 overflow-hidden">
         {/* Mapa */}
         <div className="h-[450px] lg:h-full rounded-2xl overflow-hidden relative border border-neutral-100 shadow-sm flex flex-col">
-          <MapTracker 
-            markers={markers} 
-            center={mapCenter} 
-            zoom={mapZoom} 
+          <MapTracker
+            markers={markers}
+            center={mapCenter}
+            zoom={mapZoom}
           />
         </div>
 
@@ -124,7 +186,7 @@ export default function GpsTrackingPage() {
           ) : (
             <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 text-left">
               {ubicaciones.map((u) => (
-                <div 
+                <div
                   key={u.camionId}
                   onClick={() => centerOnTruck(u)}
                   className="p-3.5 rounded-xl border border-neutral-100 hover:border-green-300 hover:bg-green-50/20 cursor-pointer transition-all flex items-start justify-between group"
@@ -138,10 +200,11 @@ export default function GpsTrackingPage() {
                     </div>
                     <p className="text-xs font-medium text-neutral-500 truncate">Operador: {u.operadorNombre}</p>
                     <p className="text-[10px] text-neutral-400 flex items-center gap-0.5 truncate">
-                      <MapPin className="size-3 text-neutral-300" /> Zona: <span className="font-semibold text-neutral-500">{u.zonaNombre || "Sin asignar"}</span>
+                      <MapPin className="size-3 text-neutral-300" /> Zona:{" "}
+                      <span className="font-semibold text-neutral-500">{u.zonaNombre || "Sin asignar"}</span>
                     </p>
                   </div>
-                  
+
                   <div className="flex flex-col items-end shrink-0 gap-1.5 text-right">
                     <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-bold">
                       VIVO

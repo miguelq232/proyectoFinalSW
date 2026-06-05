@@ -5,8 +5,12 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { gpsService, type CamionUbicacion, type CercaniaResponse } from "@/modules/admin/gps/services/gpsService"
-import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/services/vecinoService"
+import {
+  gpsService,
+  type CamionUbicacion,
+  type CercaniaResponse,
+} from "@/modules/admin/gps/pages/GpsTrackingPage"
+import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/pages/VecinoProfilePage"
 
 export default function VecinoTrackingPage() {
   const [vecino, setVecino] = useState<VecinoProfile | null>(null)

@@ -1,23 +1,60 @@
-﻿import { useState, useEffect } from "react"
-import { 
-  QrCode, Sparkles, Loader2, AlertCircle, 
-  Save, CheckCircle2, Award, Landmark 
+﻿import { useState, useEffect, type FormEvent } from "react"
+import {
+  QrCode,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  Save,
+  CheckCircle2,
+  Award,
+  Landmark,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
-import { usuariosService, type UsuarioRequest } from "@/modules/admin/usuarios/services/usuariosService"
-import { zonasService, type ZonaResponse } from "@/modules/admin/zona/services/zonasService"
-import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/services/vecinoService"
+import { usuariosService, type UsuarioRequest } from "@/modules/admin/usuarios/pages/UsuariosPage"
+import { zonasService, type ZonaResponse } from "@/modules/admin/zona/pages/ZonasPage"
+import { api, getErrorMessage } from "@/shared/services/api"
+
+// --- Types & Service (vecinoService.ts) ---
+
+export interface VecinoProfile {
+  id: number
+  nombre: string
+  apellido: string
+  email: string
+  telefono: string | null
+  direccion: string | null
+  latitud: number | null
+  longitud: number | null
+  zonaId: number | null
+  zonaNombre: string | null
+  codigoQR: string | null
+  puntosAcumulados: number | null
+  activo: boolean
+}
+
+export const vecinoService = {
+  async getMyProfile(): Promise<VecinoProfile> {
+    try {
+      const res = await api.get<VecinoProfile>("/vecinos/me")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+}
+
+// --- Page Component ---
 
 export default function VecinoProfilePage() {
   const [vecino, setVecino] = useState<VecinoProfile | null>(null)
   const [zonas, setZonas] = useState<ZonaResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Form State
   const [nombre, setNombre] = useState("")
   const [apellido, setApellido] = useState("")
@@ -64,10 +101,10 @@ export default function VecinoProfilePage() {
     setSuccessMsg(null)
   }
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleSave(e: FormEvent) {
     e.preventDefault()
     if (!vecino) return
-    
+
     setSubmitting(true)
     setSuccessMsg(null)
     setError(null)
@@ -124,18 +161,20 @@ export default function VecinoProfilePage() {
     })
   }
 
-  const mapCenter: [number, number] = latitud !== "" && longitud !== ""
-    ? [Number(latitud), Number(longitud)]
-    : [-17.7834, -63.1821]
+  const mapCenter: [number, number] =
+    latitud !== "" && longitud !== ""
+      ? [Number(latitud), Number(longitud)]
+      : [-17.7834, -63.1821]
 
-  const activeZona = zonas.find(z => z.id === Number(zonaId))
-  const circleArea = activeZona && activeZona.latitudCentro && activeZona.longitudCentro && activeZona.radioKm
-    ? {
-        center: [activeZona.latitudCentro, activeZona.longitudCentro] as [number, number],
-        radiusMeters: activeZona.radioKm * 1000,
-        label: activeZona.nombre,
-      }
-    : undefined
+  const activeZona = zonas.find((z) => z.id === Number(zonaId))
+  const circleArea =
+    activeZona && activeZona.latitudCentro && activeZona.longitudCentro && activeZona.radioKm
+      ? {
+          center: [activeZona.latitudCentro, activeZona.longitudCentro] as [number, number],
+          radiusMeters: activeZona.radioKm * 1000,
+          label: activeZona.nombre,
+        }
+      : undefined
 
   if (loading) {
     return (
@@ -194,7 +233,7 @@ export default function VecinoProfilePage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="h-[380px] w-full relative">
-                <MapTracker 
+                <MapTracker
                   markers={markers}
                   center={mapCenter}
                   zoom={14}
@@ -208,11 +247,13 @@ export default function VecinoProfilePage() {
           {/* Formulario */}
           <form onSubmit={handleSave} className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm space-y-4 text-left">
             <h3 className="font-bold text-neutral-800 text-lg border-b border-neutral-50 pb-2">Informaci├│n Domiciliaria</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="nombre" className="font-semibold text-neutral-700">Nombre</Label>
-                <Input 
+                <Label htmlFor="nombre" className="font-semibold text-neutral-700">
+                  Nombre
+                </Label>
+                <Input
                   id="nombre"
                   required
                   value={nombre}
@@ -221,8 +262,10 @@ export default function VecinoProfilePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="apellido" className="font-semibold text-neutral-700">Apellido</Label>
-                <Input 
+                <Label htmlFor="apellido" className="font-semibold text-neutral-700">
+                  Apellido
+                </Label>
+                <Input
                   id="apellido"
                   required
                   value={apellido}
@@ -234,8 +277,10 @@ export default function VecinoProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="telefono" className="font-semibold text-neutral-700">Tel├®fono</Label>
-                <Input 
+                <Label htmlFor="telefono" className="font-semibold text-neutral-700">
+                  Tel├®fono
+                </Label>
+                <Input
                   id="telefono"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
@@ -244,7 +289,9 @@ export default function VecinoProfilePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="zonaId" className="font-semibold text-neutral-700">Mi Zona / Distrito</Label>
+                <Label htmlFor="zonaId" className="font-semibold text-neutral-700">
+                  Mi Zona / Distrito
+                </Label>
                 <select
                   id="zonaId"
                   value={zonaId}
@@ -262,8 +309,10 @@ export default function VecinoProfilePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="direccion" className="font-semibold text-neutral-700">Direcci├│n Domiciliaria Exacta</Label>
-              <Input 
+              <Label htmlFor="direccion" className="font-semibold text-neutral-700">
+                Direcci├│n Domiciliaria Exacta
+              </Label>
+              <Input
                 id="direccion"
                 value={direccion}
                 onChange={(e) => setDireccion(e.target.value)}
@@ -275,11 +324,15 @@ export default function VecinoProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
               <div className="space-y-1">
                 <span className="text-[10px] text-neutral-400 font-bold uppercase">Latitud</span>
-                <p className="font-mono text-sm font-semibold text-neutral-700">{latitud !== "" ? Number(latitud).toFixed(6) : "Haz clic en el mapa"}</p>
+                <p className="font-mono text-sm font-semibold text-neutral-700">
+                  {latitud !== "" ? Number(latitud).toFixed(6) : "Haz clic en el mapa"}
+                </p>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-neutral-400 font-bold uppercase">Longitud</span>
-                <p className="font-mono text-sm font-semibold text-neutral-700">{longitud !== "" ? Number(longitud).toFixed(6) : "Haz clic en el mapa"}</p>
+                <p className="font-mono text-sm font-semibold text-neutral-700">
+                  {longitud !== "" ? Number(longitud).toFixed(6) : "Haz clic en el mapa"}
+                </p>
               </div>
             </div>
 
@@ -333,9 +386,11 @@ export default function VecinoProfilePage() {
                   <span>{(vecino.puntosAcumulados || 0) % 500} / 500 pts</span>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-2 shadow-inner overflow-hidden">
-                  <div 
+                  <div
                     className="bg-emerald-400 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min((((vecino.puntosAcumulados || 0) % 500) / 500) * 100, 100)}%` }}
+                    style={{
+                      width: `${Math.min((((vecino.puntosAcumulados || 0) % 500) / 500) * 100, 100)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -360,9 +415,13 @@ export default function VecinoProfilePage() {
                 <div className="absolute top-2 right-2 size-4 border-t-2 border-r-2 border-green-600 rounded-tr" />
                 <div className="absolute bottom-2 left-2 size-4 border-b-2 border-l-2 border-green-600 rounded-bl" />
                 <div className="absolute bottom-2 right-2 size-4 border-b-2 border-r-2 border-green-600 rounded-br" />
-                
+
                 {/* QR Simulador */}
-                <svg className="size-40 text-neutral-900 group-hover:scale-95 transition-transform duration-300" viewBox="0 0 100 100" fill="currentColor">
+                <svg
+                  className="size-40 text-neutral-900 group-hover:scale-95 transition-transform duration-300"
+                  viewBox="0 0 100 100"
+                  fill="currentColor"
+                >
                   {/* Cuadrados principales de esquina de Leaflet/QR */}
                   <rect x="0" y="0" width="25" height="25" />
                   <rect x="3" y="3" width="19" height="19" fill="white" />

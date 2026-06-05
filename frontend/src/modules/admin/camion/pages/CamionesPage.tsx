@@ -1,3 +1,4 @@
+import { useState, useEffect, type FormEvent } from "react"
 import {
   Truck,
   Plus,
@@ -16,7 +17,264 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { useCamiones } from "@/modules/admin/camion/hooks/useCamiones"
+import { api, getErrorMessage } from "@/shared/services/api"
+import { zonasService, type ZonaResponse } from "@/modules/admin/zona/pages/ZonasPage"
+import { usuariosService, type UsuarioResponse } from "@/modules/admin/usuarios/pages/UsuariosPage"
+
+// --- Types & Service (camionesService.ts) ---
+
+export type EstadoCamion = "ACTIVO" | "INACTIVO" | "EN_MANTENIMIENTO"
+
+export interface CamionResponse {
+  id: number
+  placa: string
+  modelo: string | null
+  anio: number
+  color: string | null
+  estado: EstadoCamion
+  fechaRegistro: string
+  zonaId?: number | null
+  zonaNombre?: string | null
+  operadorId?: number | null
+  operadorNombre?: string | null
+}
+
+export interface CamionRequest {
+  placa: string
+  modelo?: string
+  anio: number
+  color?: string
+  estado: EstadoCamion
+  zonaId?: number
+  operadorId?: number
+}
+
+export const camionesService = {
+  async getAll(): Promise<CamionResponse[]> {
+    try {
+      const res = await api.get<CamionResponse[]>("/camiones")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async getById(id: number): Promise<CamionResponse> {
+    try {
+      const res = await api.get<CamionResponse>(`/camiones/${id}`)
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async create(data: CamionRequest): Promise<CamionResponse> {
+    try {
+      const res = await api.post<CamionResponse>("/camiones", data)
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async update(id: number, data: CamionRequest): Promise<CamionResponse> {
+    try {
+      const res = await api.put<CamionResponse>(`/camiones/${id}`, data)
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
+  async delete(id: number): Promise<void> {
+    try {
+      await api.delete(`/camiones/${id}`)
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+}
+
+// --- Hook (useCamiones.ts) ---
+
+function useCamiones() {
+  const [camiones, setCamiones] = useState<CamionResponse[]>([])
+  const [zonas, setZonas] = useState<ZonaResponse[]>([])
+  const [operadores, setOperadores] = useState<UsuarioResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Filtros
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<"CREATE" | "EDIT">("CREATE")
+  const [editingCamionId, setEditingCamionId] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  // Form Fields
+  const [placa, setPlaca] = useState("")
+  const [modelo, setModelo] = useState("")
+  const [anio, setAnio] = useState<number | "">("")
+  const [color, setColor] = useState("")
+  const [estado, setEstado] = useState<EstadoCamion>("ACTIVO")
+  const [zonaId, setZonaId] = useState<number | "">("")
+  const [operadorId, setOperadorId] = useState<number | "">("")
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  async function fetchData() {
+    setLoading(true)
+    setError(null)
+    try {
+      const [cData, zData, uData] = await Promise.all([
+        camionesService.getAll(),
+        zonasService.getAll(),
+        usuariosService.getAll(),
+      ])
+      setCamiones(cData)
+      setZonas(zData)
+      // Filter users to get only operators
+      const ops = uData.filter((u) => u.rol === "OPERADOR")
+      setOperadores(ops)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar catálogo de vehículos")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function openCreateModal() {
+    setModalMode("CREATE")
+    setEditingCamionId(null)
+    setPlaca("")
+    setModelo("")
+    setAnio(new Date().getFullYear())
+    setColor("")
+    setEstado("ACTIVO")
+    setZonaId("")
+    setOperadorId("")
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  function openEditModal(camion: CamionResponse) {
+    setModalMode("EDIT")
+    setEditingCamionId(camion.id)
+    setPlaca(camion.placa)
+    setModelo(camion.modelo || "")
+    setAnio(camion.anio)
+    setColor(camion.color || "")
+    setEstado(camion.estado)
+    setZonaId(camion.zonaId ?? "")
+    setOperadorId(camion.operadorId ?? "")
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    setSubmitting(true)
+
+    if (!placa || !anio || !estado) {
+      setFormError("Por favor completa los campos requeridos")
+      setSubmitting(false)
+      return
+    }
+
+    const payload: CamionRequest = {
+      placa: placa.trim().toUpperCase(),
+      modelo: modelo.trim() || undefined,
+      anio: Number(anio),
+      color: color.trim() || undefined,
+      estado,
+      zonaId: zonaId !== "" ? Number(zonaId) : undefined,
+      operadorId: operadorId !== "" ? Number(operadorId) : undefined,
+    }
+
+    try {
+      if (modalMode === "CREATE") {
+        await camionesService.create(payload)
+      } else {
+        if (!editingCamionId) return
+        await camionesService.update(editingCamionId, payload)
+      }
+      setIsModalOpen(false)
+      fetchData()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Error al guardar el camión")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("¿Está seguro de eliminar este vehículo permanentemente?")) return
+    try {
+      await camionesService.delete(id)
+      setCamiones((prev) => prev.filter((c) => c.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo eliminar el camión")
+    }
+  }
+
+  const filteredCamiones = camiones.filter((c) => {
+    const term = search.toLowerCase()
+    const matchesSearch =
+      c.placa.toLowerCase().includes(term) ||
+      (c.modelo && c.modelo.toLowerCase().includes(term)) ||
+      (c.operadorNombre && c.operadorNombre.toLowerCase().includes(term)) ||
+      (c.zonaNombre && c.zonaNombre.toLowerCase().includes(term))
+
+    const matchesStatus = statusFilter === "ALL" || c.estado === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  return {
+    zonas,
+    operadores,
+    loading,
+    error,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    isModalOpen,
+    setIsModalOpen,
+    modalMode,
+    submitting,
+    formError,
+    placa,
+    setPlaca,
+    modelo,
+    setModelo,
+    anio,
+    setAnio,
+    color,
+    setColor,
+    estado,
+    setEstado,
+    zonaId,
+    setZonaId,
+    operadorId,
+    setOperadorId,
+    fetchData,
+    openCreateModal,
+    openEditModal,
+    handleSubmit,
+    handleDelete,
+    filteredCamiones,
+  }
+}
+
+// --- Page Component ---
 
 export default function CamionesPage() {
   const {

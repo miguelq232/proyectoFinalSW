@@ -28,8 +28,8 @@ adb logcat flutter:D *:S
 
 git checkout -b PB-10-12
 git add .
-git commit -m "feat: IA YOLOv8, maqueta Arduino y clasificacion movil Sprint 1"
-git push -u origin PB-10-12
+git commit -m "PRUEBAS"
+git push -u origin tem
 
 
 SW1-1/2026
