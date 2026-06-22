@@ -4,7 +4,6 @@ import {
   Award,
   BarChart3,
   CalendarDays,
-  Gift,
   Leaf,
   TrendingUp,
   Loader2,
