@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+        <span>Registro Fotográfico</span>
+        <button id="btn-actualizar" class="btn btn-sm btn-primary" onclick="actualizarManual()">
+            🔄 Actualizar ahora
+        </button>
+    </div>
+    <div class="card-body">
+        
+        <!-- Pestañas de Navegación (Tabs) -->
+        <ul class="nav nav-tabs mb-4 flex-wrap" id="galeria-tabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-BIODEGRADABLE">
+                    Biodegradable <span class="badge bg-secondary" id="badge-BIODEGRADABLE">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-CARDBOARD">
+                    Cartón <span class="badge bg-secondary" id="badge-CARDBOARD">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-CLOTH">
+                    Tela/Ropa <span class="badge bg-secondary" id="badge-CLOTH">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-GLASS">
+                    Vidrio <span class="badge bg-secondary" id="badge-GLASS">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-METAL">
+                    Metal <span class="badge bg-secondary" id="badge-METAL">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-PAPER">
+                    Papel <span class="badge bg-secondary" id="badge-PAPER">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-PLASTIC">
+                    Plástico <span class="badge bg-secondary" id="badge-PLASTIC">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-desconocido">
+                    Desconocido <span class="badge bg-secondary" id="badge-desconocido">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <!-- Contenedores de las Cuadrículas de Imágenes -->
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-BIODEGRADABLE"><div class="row" id="grid-BIODEGRADABLE"></div></div>
+            <div class="tab-pane fade" id="tab-CARDBOARD"><div class="row" id="grid-CARDBOARD"></div></div>
+            <div class="tab-pane fade" id="tab-CLOTH"><div class="row" id="grid-CLOTH"></div></div>
+            <div class="tab-pane fade" id="tab-GLASS"><div class="row" id="grid-GLASS"></div></div>
+            <div class="tab-pane fade" id="tab-METAL"><div class="row" id="grid-METAL"></div></div>
+            <div class="tab-pane fade" id="tab-PAPER"><div class="row" id="grid-PAPER"></div></div>
+            <div class="tab-pane fade" id="tab-PLASTIC"><div class="row" id="grid-PLASTIC"></div></div>
+            <div class="tab-pane fade" id="tab-desconocido"><div class="row" id="grid-desconocido"></div></div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function actualizarGaleria() {
+        fetch('/api/galeria')
+            .then(response => response.json())
+            .then(data => {
+                // Lista de las clases (Las mayúsculas coinciden con las carpetas y los IDs)
+                const clases = [
+                    'BIODEGRADABLE', 'CARDBOARD', 'CLOTH', 'GLASS', 
+                    'METAL', 'PAPER', 'PLASTIC', 'desconocido'
+                ];
+                
+                clases.forEach(clase => {
+                    const grid = document.getElementById(`grid-${clase}`);
+                    const badge = document.getElementById(`badge-${clase}`);
+                    
+                    if (!grid || !badge) return; // Saltamos si no encuentra la pestaña
+
+                    // --- MANEJO ESPECIAL PARA "DESCONOCIDO" ---
+                    let datosClase = { total: 0, imagenes: [] };
+                    let nombreCarpeta = clase; 
+
+                    if (clase === 'desconocido') {
+                        // Unificamos todo lo que no se detectó (null, NULL o desconocido)
+                        let d1 = data['desconocido'] || { total: 0, imagenes: [] };
+                        let d2 = data['null'] || { total: 0, imagenes: [] };
+                        let d3 = data['NULL'] || { total: 0, imagenes: [] };
+                        
+                        datosClase.total = d1.total + d2.total + d3.total;
+                        // Juntamos todas las imágenes en una sola lista
+                        datosClase.imagenes = [...d1.imagenes, ...d2.imagenes, ...d3.imagenes];
+                        
+                        // Determinamos en qué carpeta física están para la URL
+                        if (d1.total > 0) nombreCarpeta = 'desconocido';
+                        else if (d2.total > 0) nombreCarpeta = 'null';
+                        else if (d3.total > 0) nombreCarpeta = 'NULL';
+                        else nombreCarpeta = 'desconocido';
+                    } else {
+                        datosClase = data[clase] || { total: 0, imagenes: [] };
+                    }
+                    
+                    // 1. Actualizar numerito en la pestaña
+                    badge.innerText = datosClase.total;
+                    
+                    // 2. Construir el nuevo HTML
+                    let nuevoHTML = '';
+                    
+                    if (datosClase.imagenes && datosClase.imagenes.length > 0) {
+                        datosClase.imagenes.forEach(img => {
+                            nuevoHTML += `
+                                <div class="col-md-3 col-6 text-center mb-3">
+                                    <a href="/static/uploads/${nombreCarpeta}/${img}" target="_blank">
+                                        <img src="/static/uploads/${nombreCarpeta}/${img}" class="img-fluid border rounded shadow-sm" style="height: 180px; object-fit: cover; width: 100%;">
+                                    </a>
+                                    <small class="text-muted d-block text-truncate mt-1">${img}</small>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        nuevoHTML = `
+                            <div class="col-12 text-center text-muted py-5">
+                                <h4>No hay registros en esta categoría.</h4>
+                            </div>
+                        `;
+                    }
+
+                    // 3. Reemplazar solo si hubo cambios
+                    if (grid.innerHTML !== nuevoHTML) {
+                        grid.innerHTML = nuevoHTML;
+                    }
+                });
+            })
+            .catch(error => console.error("Error obteniendo galería:", error));
+    }
+
+    // Función para el botón de refresco manual
+    function actualizarManual() {
+        const btn = document.getElementById('btn-actualizar');
+        btn.innerHTML = '⏳ Actualizando...';
+        btn.disabled = true;
+
+        actualizarGaleria();
+
+        setTimeout(() => {
+            btn.innerHTML = '🔄 Actualizar ahora';
+            btn.disabled = false;
+        }, 1000);
+    }
+
+    // Ejecutar al iniciar y luego cada 3 segundos
+    actualizarGaleria();
+    setInterval(actualizarGaleria, 3000);
+</script>
+{% endblock %}

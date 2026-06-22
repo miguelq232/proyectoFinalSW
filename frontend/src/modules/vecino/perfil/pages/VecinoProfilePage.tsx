@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, type FormEvent } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import {
   QrCode,
   Sparkles,
@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Award,
   Landmark,
+  Recycle,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,17 @@ import { zonasService, type ZonaResponse } from "@/modules/admin/zona/pages/Zona
 import { api, getErrorMessage } from "@/shared/services/api"
 
 // --- Types & Service (vecinoService.ts) ---
+
+export interface PuntosResponse {
+  id: number
+  vecinoId: number
+  vecinoNombre: string
+  tipoResiduo: string
+  cantidad: number
+  puntosOtorgados: number
+  fecha: string
+  descripcion: string | null
+}
 
 export interface VecinoProfile {
   id: number
@@ -45,6 +57,15 @@ export const vecinoService = {
       throw new Error(getErrorMessage(e))
     }
   },
+
+  async getMyHistory(): Promise<PuntosResponse[]> {
+    try {
+      const res = await api.get<PuntosResponse[]>("/puntos/historial")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
 }
 
 // --- Page Component ---
@@ -52,6 +73,7 @@ export const vecinoService = {
 export default function VecinoProfilePage() {
   const [vecino, setVecino] = useState<VecinoProfile | null>(null)
   const [zonas, setZonas] = useState<ZonaResponse[]>([])
+  const [historial, setHistorial] = useState<PuntosResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,13 +96,15 @@ export default function VecinoProfilePage() {
     setLoading(true)
     setError(null)
     try {
-      const [myProfile, zData] = await Promise.all([
+      const [myProfile, zData, hData] = await Promise.all([
         vecinoService.getMyProfile(),
         zonasService.getAll(),
+        vecinoService.getMyHistory(),
       ])
 
       setZonas(zData)
       setVecino(myProfile)
+      setHistorial(hData)
       setNombre(myProfile.nombre)
       setApellido(myProfile.apellido)
       setTelefono(myProfile.telefono || "")
@@ -416,41 +440,12 @@ export default function VecinoProfilePage() {
                 <div className="absolute bottom-2 left-2 size-4 border-b-2 border-l-2 border-green-600 rounded-bl" />
                 <div className="absolute bottom-2 right-2 size-4 border-b-2 border-r-2 border-green-600 rounded-br" />
 
-                {/* QR Simulador */}
-                <svg
-                  className="size-40 text-neutral-900 group-hover:scale-95 transition-transform duration-300"
-                  viewBox="0 0 100 100"
-                  fill="currentColor"
-                >
-                  {/* Cuadrados principales de esquina de Leaflet/QR */}
-                  <rect x="0" y="0" width="25" height="25" />
-                  <rect x="3" y="3" width="19" height="19" fill="white" />
-                  <rect x="7" y="7" width="11" height="11" />
-
-                  <rect x="75" y="0" width="25" height="25" />
-                  <rect x="78" y="3" width="19" height="19" fill="white" />
-                  <rect x="82" y="7" width="11" height="11" />
-
-                  <rect x="0" y="75" width="25" height="25" />
-                  <rect x="3" y="78" width="19" height="19" fill="white" />
-                  <rect x="7" y="82" width="11" height="11" />
-
-                  {/* Pixeles aleatorios del QR */}
-                  <rect x="35" y="5" width="5" height="15" />
-                  <rect x="45" y="0" width="10" height="5" />
-                  <rect x="60" y="8" width="8" height="8" />
-                  <rect x="10" y="35" width="15" height="5" />
-                  <rect x="0" y="45" width="5" height="10" />
-                  <rect x="35" y="35" width="30" height="30" />
-                  <rect x="40" y="40" width="20" height="20" fill="white" />
-                  <rect x="48" y="48" width="5" height="5" />
-                  <rect x="75" y="35" width="10" height="15" />
-                  <rect x="90" y="45" width="10" height="10" />
-                  <rect x="35" y="75" width="15" height="10" />
-                  <rect x="40" y="90" width="20" height="10" />
-                  <rect x="75" y="75" width="5" height="15" />
-                  <rect x="85" y="85" width="15" height="5" />
-                </svg>
+                {/* QR Dinámico */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`VEC-${vecino.id}-IGCS`)}`}
+                  alt="Código QR Ecológico"
+                  className="size-40 group-hover:scale-105 transition-transform duration-300 rounded"
+                />
               </div>
               <span className="font-mono text-[10px] text-neutral-400 mt-4 uppercase tracking-wider">
                 ID-RECL: VEC-{vecino.id}-IGCS
@@ -459,6 +454,99 @@ export default function VecinoProfilePage() {
           </Card>
         </div>
       </div>
+
+      {/* Historial de Reciclaje */}
+      <Card className="border-neutral-100 shadow-sm text-left overflow-hidden mt-6">
+        <CardHeader className="bg-green-50/50 border-b border-neutral-100 py-4">
+          <CardTitle className="text-base font-bold text-neutral-800 flex items-center gap-2">
+            <Recycle className="size-5 text-green-600" />
+            Historial de Reciclaje e Incentivos
+          </CardTitle>
+          <CardDescription>
+            Revisa tus registros de depósito y las clasificaciones por IA procesadas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {historial.length === 0 ? (
+            <div className="p-10 text-center space-y-2">
+              <div className="flex justify-center">
+                <Recycle className="size-12 text-neutral-300 animate-pulse" />
+              </div>
+              <p className="font-semibold text-neutral-600 text-sm">Sin registros aún</p>
+              <p className="text-xs text-neutral-400 max-w-xs mx-auto">
+                Los depósitos que realices o las clasificaciones con IA se verán reflejados aquí inmediatamente.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-neutral-500">
+                <thead className="text-xs text-neutral-700 uppercase bg-neutral-50 border-b border-neutral-100">
+                  <tr>
+                    <th scope="col" className="px-6 py-3.5 font-bold">Fecha / Hora</th>
+                    <th scope="col" className="px-6 py-3.5 font-bold">Material</th>
+                    <th scope="col" className="px-6 py-3.5 font-bold">Cantidad</th>
+                    <th scope="col" className="px-6 py-3.5 font-bold">Incentivo</th>
+                    <th scope="col" className="px-6 py-3.5 font-bold">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {historial.map((item) => (
+                    <tr key={item.id} className="bg-white hover:bg-neutral-50/60 transition-colors">
+                      <td className="px-6 py-4 font-medium text-neutral-900 whitespace-nowrap">
+                        {new Date(item.fecha).toLocaleString("es-BO", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getResiduoColor(item.tipoResiduo)}`}>
+                          {getResiduoLabel(item.tipoResiduo)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono font-medium text-neutral-700">
+                        {item.cantidad ? item.cantidad.toFixed(1) : "1.0"} und
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 font-bold text-green-700 font-mono">
+                          ⭐ +{item.puntosOtorgados}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-neutral-500 max-w-xs truncate" title={item.descripcion || ""}>
+                        {item.descripcion || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
+}
+
+function getResiduoColor(tipo: string) {
+  const t = tipo.toUpperCase();
+  if (t === "PLASTIC" || t === "PLÁSTICO") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (t === "GLASS" || t === "VIDRIO") return "bg-teal-50 text-teal-700 border-teal-200";
+  if (t === "METAL") return "bg-amber-50 text-amber-700 border-amber-200";
+  if (t === "PAPER" || t === "PAPEL") return "bg-yellow-50 text-yellow-700 border-yellow-200";
+  if (t === "CARDBOARD" || t === "CARTÓN") return "bg-orange-50 text-orange-700 border-orange-200";
+  if (t === "BIODEGRADABLE") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  return "bg-neutral-50 text-neutral-700 border-neutral-200";
+}
+
+function getResiduoLabel(tipo: string) {
+  const t = tipo.toUpperCase();
+  if (t === "PLASTIC") return "Plástico";
+  if (t === "GLASS") return "Vidrio";
+  if (t === "METAL") return "Metal";
+  if (t === "PAPER") return "Papel";
+  if (t === "CARDBOARD") return "Cartón";
+  if (t === "BIODEGRADABLE") return "Biodegradable";
+  return tipo;
 }

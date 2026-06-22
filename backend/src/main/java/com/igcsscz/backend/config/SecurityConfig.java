@@ -48,6 +48,7 @@ public class SecurityConfig {
                                                 "/api/auth/register",
                                                 "/api/auth/login",
                                                 "/api/puntos/deposito",
+                                                "/api/puntos/registrar-reciclaje",
                                                 "/actuator/health",
                                                 "/swagger-ui.html",
                                                 "/swagger-ui/**",

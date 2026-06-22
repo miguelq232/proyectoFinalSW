@@ -2,6 +2,8 @@ package com.igcsscz.backend.modules.puntos;
 
 import com.igcsscz.backend.modules.puntos.dto.PuntosRequestDTO;
 import com.igcsscz.backend.modules.puntos.dto.PuntosResponseDTO;
+import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeRequestDTO;
+import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeResponseDTO;
 import java.security.Principal;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,11 @@ public class PuntosController {
     @PostMapping("/deposito")
     public ResponseEntity<PuntosResponseDTO> registrarDeposito(@RequestBody PuntosRequestDTO request) {
         return ResponseEntity.ok(puntosService.registrarDeposito(request));
+    }
+
+    @PostMapping("/registrar-reciclaje")
+    public ResponseEntity<RegistrarReciclajeResponseDTO> registrarReciclaje(@RequestBody RegistrarReciclajeRequestDTO request) {
+        return ResponseEntity.ok(puntosService.registrarReciclaje(request));
     }
 
     @GetMapping("/historial")

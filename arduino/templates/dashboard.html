@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Definimos las variables de forma limpia sumando los valores o poniendo 0 si no existen -->
+{% set c_bio = stats.get('BIODEGRADABLE', 0) %}
+{% set c_carton = stats.get('CARDBOARD', 0) %}
+{% set c_tela = stats.get('CLOTH', 0) %}
+{% set c_vidrio = stats.get('GLASS', 0) %}
+{% set c_metal = stats.get('METAL', 0) %}
+{% set c_papel = stats.get('PAPER', 0) %}
+{% set c_plastico = stats.get('PLASTIC', 0) %}
+{% set c_desc = stats.get('desconocido', 0) + stats.get('null', 0) + stats.get('NULL', 0) %}
+
+<!-- TARJETAS DE CANTIDADES -->
+<div class="row text-center mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-success text-white shadow-sm h-100">
+            <div class="card-body">
+                <h5>🍃 Orgánico</h5>
+                <h2 class="display-5 fw-bold">{{ c_bio }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-warning text-dark shadow-sm h-100">
+            <div class="card-body">
+                <h5>📦 Cartón</h5>
+                <h2 class="display-5 fw-bold">{{ c_carton }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card shadow-sm h-100" style="background-color: #6f42c1; color: white;">
+            <div class="card-body">
+                <h5>👕 Tela</h5>
+                <h2 class="display-5 fw-bold">{{ c_tela }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-info text-dark shadow-sm h-100">
+            <div class="card-body">
+                <h5>🍾 Vidrio</h5>
+                <h2 class="display-5 fw-bold">{{ c_vidrio }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-secondary text-white shadow-sm h-100">
+            <div class="card-body">
+                <h5>🥫 Metal</h5>
+                <h2 class="display-5 fw-bold">{{ c_metal }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-light text-dark shadow-sm h-100 border">
+            <div class="card-body">
+                <h5>📄 Papel</h5>
+                <h2 class="display-5 fw-bold">{{ c_papel }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-primary text-white shadow-sm h-100">
+            <div class="card-body">
+                <h5>🥤 Plástico</h5>
+                <h2 class="display-5 fw-bold">{{ c_plastico }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-dark text-white shadow-sm h-100">
+            <div class="card-body">
+                <h5>❓ Desconocidos</h5>
+                <h2 class="display-5 fw-bold">{{ c_desc }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRÁFICO Y ESTIMACIÓN DE MASA -->
+<div class="row justify-content-center align-items-stretch">
+    
+    <!-- Gráfico -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-bold text-center">Proporción de Materiales</div>
+            <!-- Se añade min-height y position: relative para asegurar que la gráfica no se haga invisible -->
+            <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 280px;">
+                <div style="position: relative; height: 100%; width: 100%;">
+                    <canvas id="graficoBasura"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Masa -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-bold text-center">Desglose de Masa Estimada</div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                <ul class="list-group list-group-flush" style="font-size: 0.95rem;">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        🍃 Orgánico (Biodegradable) <span id="ton-bio" class="badge bg-success rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        📦 Cartón <span id="ton-carton" class="badge bg-warning text-dark rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        👕 Tela/Ropa <span id="ton-tela" class="badge" style="background-color: #6f42c1;">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        🍾 Vidrio <span id="ton-vidrio" class="badge bg-info text-dark rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        🥫 Metal <span id="ton-metal" class="badge bg-secondary rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        📄 Papel <span id="ton-papel" class="badge bg-light text-dark border rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        🥤 Plástico <span id="ton-plastico" class="badge bg-primary rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ❓ Desconocidos <span id="ton-desconocido" class="badge bg-dark rounded-pill">0.0000 t</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center mt-3 border-top pt-3 fw-bold fs-5">
+                        Total General
+                        <span id="totalToneladas" class="text-success">0.0000 t</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    // 1. LEEMOS LAS VARIABLES DIRECTAMENTE
+    // Al usar {{ variable }} el propio Jinja de Python imprime el número exacto, sin errores de comillas
+    // Leemos las variables desde Jinja a JavaScript de forma SEGURA con comillas
+  const cantidades = {
+    bio: {{ stats.get('BIODEGRADABLE', 0) }},
+    carton: {{ stats.get('CARDBOARD', 0) }},
+    tela: {{ stats.get('CLOTH', 0) }},
+    vidrio: {{ stats.get('GLASS', 0) }},
+    metal: {{ stats.get('METAL', 0) }},
+    papel: {{ stats.get('PAPER', 0) }},
+    plastico: {{ stats.get('PLASTIC', 0) }},
+    desc: {{ stats.get('desconocido', 0) + stats.get('null', 0) + stats.get('NULL', 0) }}
+};
+    // 2. ACTUALIZAMOS LAS TONELADAS PRIMERO
+    // Esto asegura que la lista se llene siempre, aunque haya problemas cargando la gráfica.
+    const PESOS_KG = {
+        bio: 0.15, carton: 0.5, tela: 0.25, vidrio: 0.4, 
+        metal: 0.1, papel: 0.05, plastico: 0.05, desc: 0.1      
+    };
+
+    const toneladas = {
+        bio: (cantidades.bio * PESOS_KG.bio) / 1000,
+        carton: (cantidades.carton * PESOS_KG.carton) / 1000,
+        tela: (cantidades.tela * PESOS_KG.tela) / 1000,
+        vidrio: (cantidades.vidrio * PESOS_KG.vidrio) / 1000,
+        metal: (cantidades.metal * PESOS_KG.metal) / 1000,
+        papel: (cantidades.papel * PESOS_KG.papel) / 1000,
+        plastico: (cantidades.plastico * PESOS_KG.plastico) / 1000,
+        desc: (cantidades.desc * PESOS_KG.desc) / 1000
+    };
+    
+    const totalToneladas = Object.values(toneladas).reduce((a, b) => a + b, 0);
+
+    document.getElementById('ton-bio').innerText = toneladas.bio.toFixed(4) + ' t';
+    document.getElementById('ton-carton').innerText = toneladas.carton.toFixed(4) + ' t';
+    document.getElementById('ton-tela').innerText = toneladas.tela.toFixed(4) + ' t';
+    document.getElementById('ton-vidrio').innerText = toneladas.vidrio.toFixed(4) + ' t';
+    document.getElementById('ton-metal').innerText = toneladas.metal.toFixed(4) + ' t';
+    document.getElementById('ton-papel').innerText = toneladas.papel.toFixed(4) + ' t';
+    document.getElementById('ton-plastico').innerText = toneladas.plastico.toFixed(4) + ' t';
+    document.getElementById('ton-desconocido').innerText = toneladas.desc.toFixed(4) + ' t';
+    
+    document.getElementById('totalToneladas').innerText = totalToneladas.toFixed(4) + ' t';
+
+
+    // 3. CONFIGURACIÓN DEL GRÁFICO (Protegido con try...catch)
+    // Así, si Chart.js falla, no arrastra consigo al resto de la página.
+    try {
+        const totalObjetos = Object.values(cantidades).reduce((a, b) => a + b, 0);
+        let chartData = [];
+        let chartColors = [];
+        let chartLabels = [];
+
+        if (totalObjetos === 0) {
+            chartData = [1];
+            chartColors = ['#e9ecef'];
+            chartLabels = ['Sin datos aún'];
+        } else {
+            chartData = [cantidades.bio, cantidades.carton, cantidades.tela, cantidades.vidrio, cantidades.metal, cantidades.papel, cantidades.plastico, cantidades.desc];
+            chartColors = ['#198754', '#ffc107', '#6f42c1', '#0dcaf0', '#6c757d', '#f8f9fa', '#0d6efd', '#212529'];
+            chartLabels = ['Orgánico', 'Cartón', 'Tela', 'Vidrio', 'Metal', 'Papel', 'Plástico', 'Desconocidos'];
+        }
+
+        const ctx = document.getElementById('graficoBasura').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: chartColors
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false // Importante para que no se ponga en blanco
+            }
+        });
+    } catch (e) {
+        console.error("Error al renderizar la gráfica:", e);
+    }
+
+    // --- 4. RECARGA AUTOMÁTICA ---
+    setTimeout(() => location.reload(), 10000);
+</script>
+{% endblock %}

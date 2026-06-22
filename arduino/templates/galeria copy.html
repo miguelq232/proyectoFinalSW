@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm">
+ <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+            <span>Registro Fotográfico</span>
+            <button id="btn-actualizar" class="btn btn-sm btn-primary" onclick="actualizarManual()">
+                🔄 Actualizar ahora
+            </button>
+        </div>
+    <div class="card-body">
+        
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-carton">
+                    Cartón <span class="badge bg-secondary" id="badge-carton">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-botella">
+                    Botellas <span class="badge bg-secondary" id="badge-botella">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-desconocido">
+                    Desconocidos <span class="badge bg-secondary" id="badge-desconocido">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-carton">
+                <div class="row" id="grid-carton"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-botella">
+                <div class="row" id="grid-botella"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-desconocido">
+                <div class="row" id="grid-desconocido"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function actualizarGaleria() {
+        fetch('/api/galeria')
+            .then(response => response.json())
+            .then(data => {
+                const clases = ['carton', 'botella', 'desconocido'];
+                
+                clases.forEach(clase => {
+                    const grid = document.getElementById(`grid-${clase}`);
+                    const badge = document.getElementById(`badge-${clase}`);
+                   // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
+                    const datosClase = data[clase];
+                    const imagenes = datosClase.imagenes;
+                    
+                    // 1. Actualizamos el numerito del badge mostrando TODAS las fotos
+                    badge.innerText = datosClase.total;
+                    // 2. Variable para armar el HTML nuevo
+                    let nuevoHTML = '';
+                    
+                    if (imagenes.length > 0) {
+                        // Construimos las tarjetas de las fotos
+                        imagenes.forEach(img => {
+                            nuevoHTML += `
+                                <div class="col-md-3 col-6 text-center mb-3">
+                                    <a href="/static/uploads/${clase}/${img}" target="_blank">
+                                        <img src="/static/uploads/${clase}/${img}" class="img-fluid border rounded" style="height: 180px; object-fit: cover; width: 100%;">
+                                    </a>
+                                    <small class="text-muted d-block text-truncate mt-1">${img}</small>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        // Mensaje si no hay fotos
+                        nuevoHTML = `
+                            <div class="col-12 text-center text-muted py-5">
+                                <h4>No hay registros en esta categoría.</h4>
+                            </div>
+                        `;
+                    }
+
+                    // 3. Reemplazamos el contenido antiguo con el nuevo solo si es diferente
+                    // Esto evita que las imágenes parpadeen si no hay imágenes nuevas
+                    if (grid.innerHTML !== nuevoHTML) {
+                        grid.innerHTML = nuevoHTML;
+                    }
+                });
+            })
+            .catch(error => console.error("Error obteniendo galería:", error));
+    }
+
+    // --- NUEVA FUNCIÓN PARA EL BOTÓN MANUAL ---
+    function actualizarManual() {
+        const btn = document.getElementById('btn-actualizar');
+        
+        // Cambiamos el texto y bloqueamos el botón para evitar clics dobles
+        btn.innerHTML = '⏳ Actualizando...';
+        btn.disabled = true;
+
+        // Llamamos a la función principal que busca las fotos
+        actualizarGaleria();
+
+        // Le devolvemos su estado normal después de 1 segundo (solo por efecto visual)
+        setTimeout(() => {
+            btn.innerHTML = '🔄 Actualizar ahora';
+            btn.disabled = false;
+        }, 1000);
+    }
+
+    // Ejecutar inmediatamente al entrar a la página
+    actualizarGaleria();
+    
+    // Repetir la actualización cada 3000 milisegundos (3 segundos)
+    setInterval(actualizarGaleria, 3000);
+</script>
+{% endblock %}

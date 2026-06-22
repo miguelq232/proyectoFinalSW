@@ -1,0 +1,15 @@
+crear entorno virtual
+python -m venv venv
+
+
+Scripts\activate
+
+pip install flask
+
+pip install ultralytics opencv-python pillow
+
+pip install pyopenssl
+
+pip install opencv-python requests
+
+pip install opencv-python requests

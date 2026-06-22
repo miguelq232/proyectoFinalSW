@@ -3,6 +3,8 @@ package com.igcsscz.backend.modules.puntos;
 import com.igcsscz.backend.modules.config.ConfigPuntosService;
 import com.igcsscz.backend.modules.puntos.dto.PuntosRequestDTO;
 import com.igcsscz.backend.modules.puntos.dto.PuntosResponseDTO;
+import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeRequestDTO;
+import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeResponseDTO;
 import com.igcsscz.backend.modules.vecino.Vecino;
 import com.igcsscz.backend.modules.vecino.VecinoRepository;
 import java.time.LocalDateTime;
@@ -59,6 +61,58 @@ public class PuntosService {
 
         Puntos guardado = puntosRepository.save(registro);
         return toResponseDTO(guardado);
+    }
+
+    @Transactional
+    public RegistrarReciclajeResponseDTO registrarReciclaje(RegistrarReciclajeRequestDTO request) {
+        if (request.getCodigoCliente() == null || request.getCodigoCliente().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El código de cliente es obligatorio");
+        }
+
+        String codigo = request.getCodigoCliente().trim();
+        Vecino vecino = vecinoRepository
+                .findByCodigoQR(codigo)
+                .or(() -> {
+                    if (codigo.startsWith("VEC-") && codigo.endsWith("-IGCS")) {
+                        try {
+                            String idPart = codigo.substring(4, codigo.length() - 5);
+                            Long id = Long.parseLong(idPart);
+                            return vecinoRepository.findById(id);
+                        } catch (NumberFormatException e) {
+                            // ignore
+                        }
+                    }
+                    try {
+                        Long id = Long.parseLong(codigo);
+                        return vecinoRepository.findById(id);
+                    } catch (NumberFormatException e) {
+                        return java.util.Optional.empty();
+                    }
+                })
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado con código/QR: " + codigo));
+
+        int puntosOtorgados = request.getPuntos() != null ? request.getPuntos() : 0;
+
+        if (puntosOtorgados > 0) {
+            int actuales = vecino.getPuntosAcumulados() != null ? vecino.getPuntosAcumulados() : 0;
+            vecino.setPuntosAcumulados(actuales + puntosOtorgados);
+            vecinoRepository.save(vecino);
+        }
+
+        Puntos registro = new Puntos();
+        registro.setVecino(vecino);
+        registro.setTipoResiduo(request.getClasificacion() != null ? request.getClasificacion().toUpperCase() : "NADA");
+        registro.setCantidad(1.0);
+        registro.setPuntosOtorgados(puntosOtorgados);
+        registro.setFecha(LocalDateTime.now());
+        registro.setDescripcion("Registro automático desde IA/Arduino");
+
+        puntosRepository.save(registro);
+
+        return new RegistrarReciclajeResponseDTO(
+                vecino.getPuntosAcumulados(),
+                vecino.getNombre() + " " + vecino.getApellido()
+        );
     }
 
     @Transactional(readOnly = true)

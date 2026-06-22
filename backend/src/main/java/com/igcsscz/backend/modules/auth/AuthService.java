@@ -101,7 +101,7 @@ public class AuthService {
         v.setDireccion("");
         v.setLatitud(null);
         v.setLongitud(null);
-        v.setCodigoQR("");
+        v.setCodigoQR("QR-VEC-" + email);
         v.setPuntosAcumulados(0);
         v.setFechaRegistro(now);
         v.setZona(null);

@@ -1,0 +1,122 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+//LiquidCrystal I2C
+//Busca la de Frank de Brabander y haz clic en Instalar
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Textos por defecto mientras no llega nada de Python
+String lineaSuperior = "Esperando...";
+String lineaInferior  = "Sistema listo";
+
+// Variables nuevas para el temporizador de 5 segundos
+unsigned long tiempoUltimoMensaje = 0;
+bool mostrandoMensaje = false;
+const unsigned long TIEMPO_ESPERA = 5000; // 5 segundos en milisegundos
+
+int posScroll = 0;
+unsigned long ultimoScroll = 0;
+const int VELOCIDAD_MS = 400;
+
+void setup() {
+  Serial.begin(9600);
+  lcd.init();
+  lcd.backlight();
+  mostrarScroll();
+}
+
+void loop() {
+  // ── Leer serial si hay datos disponibles ──
+  if (Serial.available()) {
+    String recibido = Serial.readStringUntil('\n');
+    recibido.trim();
+
+    if (recibido.length() > 0) {
+      int separador = recibido.indexOf('|');
+
+      if (separador != -1) {
+        // Formato correcto: "linea1|linea2"
+        lineaSuperior = recibido.substring(0, separador);
+        lineaInferior  = recibido.substring(separador + 1);
+      } else {
+        // Solo vino una línea, la ponemos arriba
+        lineaSuperior = recibido;
+        lineaInferior  = "";
+      }
+
+      // Reiniciar scroll para el nuevo texto
+      posScroll = 0;
+      lcd.clear();
+      // 🛑 INICIAR EL TEMPORIZADOR AQUÍ
+      tiempoUltimoMensaje = millis();
+      mostrandoMensaje = true;
+    }
+  }
+
+
+  // ── Comprobar si debemos volver al mensaje por defecto ──
+  if (mostrandoMensaje && (millis() - tiempoUltimoMensaje >= TIEMPO_ESPERA)) {
+    // Restaurar textos originales
+    lineaSuperior = "Esperando...";
+    lineaInferior = "Sistema listo";
+    
+    // Reiniciar estado
+    posScroll = 0;
+    lcd.clear();
+    mostrandoMensaje = false; 
+  }
+
+  // ── Scroll / mostrar ──
+  unsigned long ahora = millis();
+  if (ahora - ultimoScroll >= VELOCIDAD_MS) {
+    ultimoScroll = ahora;
+
+    if (lineaSuperior.length() > 16) {
+      scrollLinea(lineaSuperior, 0, posScroll);
+    } else {
+      lcd.setCursor(0, 0);
+      lcd.print(lineaSuperior);
+      // Limpiar resto de la fila
+      for (int i = lineaSuperior.length(); i < 16; i++) lcd.print(' ');
+    }
+
+    if (lineaInferior.length() > 16) {
+      scrollLinea(lineaInferior, 1, posScroll);
+    } else {
+      lcd.setCursor(0, 1);
+      lcd.print(lineaInferior);
+      for (int i = lineaInferior.length(); i < 16; i++) lcd.print(' ');
+    }
+
+    posScroll++;
+
+    int maxLen = max((int)lineaSuperior.length(), (int)lineaInferior.length());
+    if (posScroll > maxLen + 16) {
+      posScroll = 0;
+    }
+  }
+}
+
+void scrollLinea(String texto, int fila, int offset) {
+  String textoPadded = texto + "                "; // 16 espacios
+  int len = textoPadded.length();
+  lcd.setCursor(0, fila);
+  for (int i = 0; i < 16; i++) {
+    int idx = (offset + i) % len;
+    lcd.print(textoPadded[idx]);
+  }
+}
+
+void mostrarScroll() {
+  if (lineaInferior.length() > 16) {
+    scrollLinea(lineaInferior, 1, 0);
+  } else {
+    lcd.setCursor(0, 1);
+    lcd.print(lineaInferior);
+  }
+  if (lineaSuperior.length() <= 16) {
+    lcd.setCursor(0, 0);
+    lcd.print(lineaSuperior);
+  }
+}

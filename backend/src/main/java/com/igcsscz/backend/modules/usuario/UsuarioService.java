@@ -77,7 +77,7 @@ public class UsuarioService {
                 vec.setDireccion(request.getDireccion() != null ? request.getDireccion().trim() : "");
                 vec.setLatitud(request.getLatitud());
                 vec.setLongitud(request.getLongitud());
-                vec.setCodigoQR("");
+                vec.setCodigoQR("QR-VEC-" + email);
                 vec.setPuntosAcumulados(0);
                 vec.setFechaRegistro(now);
                 if (request.getZonaId() != null) {

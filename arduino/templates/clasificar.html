@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white fw-bold text-center fs-5">
+        ♻️ Clasificador de Residuos con IA
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Código de cliente -->
+        <div class="mb-4">
+          <label for="codigoCliente" class="form-label fw-semibold">
+            Código de cliente
+          </label>
+          <input
+            type="text"
+            id="codigoCliente"
+            class="form-control form-control-lg"
+            placeholder="Ej: VEC-3-IGCS o 3"
+          />
+        </div>
+
+        <!-- Cámara web -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Captura desde cámara</label>
+
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAbrir">
+              📷 Abrir cámara
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnCapturar">
+              🔵 Capturar foto
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCerrar">
+              ✖ Cerrar cámara
+            </button>
+          </div>
+
+          <!-- Preview de video en vivo -->
+          <video
+            id="video"
+            autoplay
+            playsinline
+            class="d-none rounded border w-100"
+            style="max-height: 280px; object-fit: cover; background:#000;"
+          ></video>
+
+          <!-- Canvas oculto para extraer el frame -->
+          <canvas id="canvas" class="d-none"></canvas>
+
+          <!-- Preview de la imagen capturada -->
+          <div id="previewWrapper" class="d-none mt-2">
+            <p class="text-muted small mb-1">Vista previa de la captura:</p>
+            <img
+              id="preview"
+              class="img-fluid rounded border"
+              alt="Captura"
+              style="max-height: 240px; width: 100%; object-fit: cover;"
+            />
+          </div>
+        </div>
+
+        <!-- Botón principal -->
+        <div class="d-grid mt-4">
+          <button
+            id="btnClasificar"
+            class="btn btn-success btn-lg fw-bold"
+            disabled
+          >
+            🤖 Clasificar con IA
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal de resultado -->
+<div class="modal fade" id="modalResultado" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Resultado de clasificación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body text-center py-4">
+        <!-- Icono dinámico -->
+        <div id="modalIcono" class="display-1 mb-3">♻️</div>
+
+        <table class="table table-borderless mx-auto" style="max-width:320px">
+          <tbody>
+            <tr>
+              <td class="text-end text-muted">Cliente</td>
+              <td class="fw-bold text-start" id="resCodigo">—</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted">Vecino</td>
+              <td class="fw-bold text-start text-success" id="resVecino">—</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted">Clasificación</td>
+              <td class="fw-bold text-start text-capitalize" id="resClasificacion">—</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted">Confianza</td>
+              <td class="fw-bold text-start" id="resConfianza">—</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted">Estado Sistema</td>
+              <td class="fw-bold text-start" id="resBackend">—</td>
+            </tr>
+            <tr class="table-success">
+              <td class="text-end fw-bold">Puntos obtenidos</td>
+              <td class="fw-bold text-start fs-4 text-success" id="resPuntos">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer border-0 justify-content-center">
+        <button
+          type="button"
+          class="btn btn-success px-5"
+          data-bs-dismiss="modal"
+          id="btnNuevo"
+        >
+          ✅ Aceptar
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Elementos ──────────────────────────────────────────
+const video         = document.getElementById('video');
+const canvas        = document.getElementById('canvas');
+const preview       = document.getElementById('preview');
+const previewWrapper= document.getElementById('previewWrapper');
+const btnAbrir      = document.getElementById('btnAbrir');
+const btnCapturar   = document.getElementById('btnCapturar');
+const btnCerrar     = document.getElementById('btnCerrar');
+const btnClasificar = document.getElementById('btnClasificar');
+const codigoInput   = document.getElementById('codigoCliente');
+
+let stream      = null;  // MediaStream activo
+let imagenBlob  = null;  // Blob JPEG de la captura
+
+// ── Iconos por clasificación ───────────────────────────
+const ICONOS = {
+  carton:      '📦',
+  botella:     '🍾',
+  plastico:    '🧴',
+  metal:       '🥫',
+  vidrio:      '🫙',
+  desconocido: '❓',
+};
+
+// ── Abrir cámara ───────────────────────────────────────
+btnAbrir.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }  // cámara trasera en móvil
+    });
+    video.srcObject = stream;
+    video.classList.remove('d-none');
+    btnAbrir.classList.add('d-none');
+    btnCapturar.classList.remove('d-none');
+    btnCerrar.classList.remove('d-none');
+    previewWrapper.classList.add('d-none');
+    imagenBlob = null;
+    btnClasificar.disabled = true;
+  } catch (err) {
+    alert('No se pudo acceder a la cámara: ' + err.message);
+  }
+});
+
+// ── Capturar foto ──────────────────────────────────────
+btnCapturar.addEventListener('click', () => {
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  canvas.toBlob(blob => {
+    imagenBlob = blob;
+    preview.src = URL.createObjectURL(blob);
+    previewWrapper.classList.remove('d-none');
+    btnClasificar.disabled = false;
+  }, 'image/jpeg', 0.92);
+
+  cerrarCamara();
+});
+
+// ── Cerrar cámara ──────────────────────────────────────
+btnCerrar.addEventListener('click', cerrarCamara);
+
+function cerrarCamara() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  video.classList.add('d-none');
+  btnCapturar.classList.add('d-none');
+  btnCerrar.classList.add('d-none');
+  btnAbrir.classList.remove('d-none');
+}
+
+// ── Clasificar con IA ──────────────────────────────────
+btnClasificar.addEventListener('click', async () => {
+  const codigo = codigoInput.value.trim();
+
+  if (!codigo) {
+    codigoInput.focus();
+    codigoInput.classList.add('is-invalid');
+    return;
+  }
+  codigoInput.classList.remove('is-invalid');
+
+  if (!imagenBlob) {
+    alert('Primero captura una imagen.');
+    return;
+  }
+
+  // Deshabilitar botón y mostrar spinner
+  btnClasificar.disabled = true;
+  btnClasificar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clasificando...';
+
+  const formData = new FormData();
+  formData.append('codigo_cliente', codigo);
+  formData.append('imagen', imagenBlob, 'captura.jpg');
+
+  try {
+    const resp = await fetch('/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || data.error) {
+      throw new Error(data.error || 'Error en el servidor');
+    }
+
+    // Llenar modal
+    const clase = (data.clasificacion || 'desconocido').toLowerCase();
+    document.getElementById('modalIcono').textContent    = ICONOS[clase] ?? '♻️';
+    document.getElementById('resCodigo').textContent     = data.codigo_cliente;
+    document.getElementById('resClasificacion').textContent = data.clasificacion;
+    document.getElementById('resConfianza').textContent  = data.confianza + '%';
+    document.getElementById('resPuntos').textContent     = '⭐ ' + data.puntos;
+
+    const resVecino = document.getElementById('resVecino');
+    const resBackend = document.getElementById('resBackend');
+    if (data.backend_success) {
+      resVecino.textContent = data.nombre_vecino || "Vecino Registrado";
+      resBackend.innerHTML = '<span class="badge bg-success">Sincronizado (Total: ' + data.puntos_acumulados + ' pts)</span>';
+    } else {
+      resVecino.textContent = "No identificado en sistema";
+      resBackend.innerHTML = '<span class="badge bg-warning text-dark" title="' + data.backend_error + '">Local (Sin Sincronizar)</span>';
+    }
+
+    new bootstrap.Modal(document.getElementById('modalResultado')).show();
+
+  } catch (err) {
+    alert('Error al clasificar: ' + err.message);
+  } finally {
+    btnClasificar.disabled = false;
+    btnClasificar.innerHTML = '🤖 Clasificar con IA';
+  }
+});
+
+// ── Al aceptar el modal, limpiar para nueva captura ───
+document.getElementById('btnNuevo').addEventListener('click', () => {
+  imagenBlob = null;
+  previewWrapper.classList.add('d-none');
+  codigoInput.value = '';
+  btnClasificar.disabled = true;
+});
+</script>
+{% endblock %}
