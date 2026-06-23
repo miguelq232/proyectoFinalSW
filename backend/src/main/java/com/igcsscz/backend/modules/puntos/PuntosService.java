@@ -33,17 +33,17 @@ public class PuntosService {
     @Transactional
     public PuntosResponseDTO registrarDeposito(PuntosRequestDTO request) {
         if (request.getCodigoQR() == null || request.getCodigoQR().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El código QR es obligatorio");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El codigo QR es obligatorio");
         }
 
         Vecino vecino =
                 vecinoRepository
                         .findByCodigoQR(request.getCodigoQR().trim())
-                        .orElseThrow(
-                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
 
-        int puntosOtorgados = configPuntosService.calcularPuntos(
-                request.getTipoResiduo(), request.getCantidad(), request.getPesoKg());
+        int puntosOtorgados =
+                configPuntosService.calcularPuntos(
+                        request.getTipoResiduo(), request.getCantidad(), request.getPesoKg());
 
         if (puntosOtorgados > 0) {
             int actuales = vecino.getPuntosAcumulados() != null ? vecino.getPuntosAcumulados() : 0;
@@ -66,30 +66,36 @@ public class PuntosService {
     @Transactional
     public RegistrarReciclajeResponseDTO registrarReciclaje(RegistrarReciclajeRequestDTO request) {
         if (request.getCodigoCliente() == null || request.getCodigoCliente().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El código de cliente es obligatorio");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El codigo de cliente es obligatorio");
         }
 
         String codigo = request.getCodigoCliente().trim();
-        Vecino vecino = vecinoRepository
-                .findByCodigoQR(codigo)
-                .or(() -> {
-                    if (codigo.startsWith("VEC-") && codigo.endsWith("-IGCS")) {
-                        try {
-                            String idPart = codigo.substring(4, codigo.length() - 5);
-                            Long id = Long.parseLong(idPart);
-                            return vecinoRepository.findById(id);
-                        } catch (NumberFormatException e) {
-                            // ignore
-                        }
-                    }
-                    try {
-                        Long id = Long.parseLong(codigo);
-                        return vecinoRepository.findById(id);
-                    } catch (NumberFormatException e) {
-                        return java.util.Optional.empty();
-                    }
-                })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado con código/QR: " + codigo));
+        Vecino vecino =
+                vecinoRepository
+                        .findByCodigoQR(codigo)
+                        .or(
+                                () -> {
+                                    if (codigo.startsWith("VEC-") && codigo.endsWith("-IGCS")) {
+                                        try {
+                                            String idPart = codigo.substring(4, codigo.length() - 5);
+                                            Long id = Long.parseLong(idPart);
+                                            return vecinoRepository.findById(id);
+                                        } catch (NumberFormatException e) {
+                                            // ignore
+                                        }
+                                    }
+                                    try {
+                                        Long id = Long.parseLong(codigo);
+                                        return vecinoRepository.findById(id);
+                                    } catch (NumberFormatException e) {
+                                        return java.util.Optional.empty();
+                                    }
+                                })
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Vecino no encontrado con codigo/QR: " + codigo));
 
         int puntosOtorgados = request.getPuntos() != null ? request.getPuntos() : 0;
 
@@ -105,14 +111,12 @@ public class PuntosService {
         registro.setCantidad(1.0);
         registro.setPuntosOtorgados(puntosOtorgados);
         registro.setFecha(LocalDateTime.now());
-        registro.setDescripcion("Registro automático desde IA/Arduino");
+        registro.setDescripcion(null);
 
         puntosRepository.save(registro);
 
         return new RegistrarReciclajeResponseDTO(
-                vecino.getPuntosAcumulados(),
-                vecino.getNombre() + " " + vecino.getApellido()
-        );
+                vecino.getPuntosAcumulados(), vecino.getNombre() + " " + vecino.getApellido());
     }
 
     @Transactional(readOnly = true)

@@ -32,6 +32,12 @@ export interface PuntosResponse {
   descripcion: string | null
 }
 
+function getDetalleHistorial(descripcion: string | null) {
+  const detalle = descripcion?.trim() || ""
+  if (detalle.toLowerCase().includes("ia/arduino")) return ""
+  return detalle
+}
+
 export interface VecinoProfile {
   id: number
   nombre: string
@@ -490,7 +496,10 @@ export default function VecinoProfilePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {historial.map((item) => (
+                  {historial.map((item) => {
+                    const detalle = getDetalleHistorial(item.descripcion)
+
+                    return (
                     <tr key={item.id} className="bg-white hover:bg-neutral-50/60 transition-colors">
                       <td className="px-6 py-4 font-medium text-neutral-900 whitespace-nowrap">
                         {new Date(item.fecha).toLocaleString("es-BO", {
@@ -514,11 +523,11 @@ export default function VecinoProfilePage() {
                           ⭐ +{item.puntosOtorgados}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-neutral-500 max-w-xs truncate" title={item.descripcion || ""}>
-                        {item.descripcion || "—"}
+                      <td className="px-6 py-4 text-xs text-neutral-500 max-w-xs truncate" title={detalle}>
+                        {detalle || "-"}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
