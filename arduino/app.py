@@ -36,6 +36,20 @@ PUNTOS_CLASIFICACION = {
 lcd = PantallaLCD(port="COM7", baudrate=9600)
 lcd.conectar()
 
+
+def texto_lcd_objeto(objeto_detectado, clase):
+    texto = str(objeto_detectado or "").strip()
+    if not texto or texto.lower() in {"no identificado", "desconocido", "unknown", "null"}:
+        texto = str(clase or "Objeto").title()
+
+    texto = (
+        texto.replace("plástico", "plastico")
+        .replace("Plástico", "Plastico")
+        .replace("cartón", "carton")
+        .replace("Cartón", "Carton")
+    )
+    return " ".join(texto.split())[:32]
+
 # Crear estructura de carpetas automáticamente si no existen
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 for clase in CLASES:
@@ -144,8 +158,9 @@ def upload():
     puntos = PUNTOS_CLASIFICACION.get(clase, resultado.get("puntos_sugeridos", 0))
     
     # 3. ¡Usas el LCD enviando la clase y los puntos!
-    mensaje_linea_2 = f"Puntos: {puntos} | {round(confianza * 100)}%"
-    lcd.enviar(clase.capitalize(), mensaje_linea_2)
+    mensaje_linea_1 = texto_lcd_objeto(objeto_detectado, clase)
+    mensaje_linea_2 = f"{puntos}pts {round(confianza * 100)}% x{cantidad_detectada}"
+    lcd.enviar(mensaje_linea_1, mensaje_linea_2)
 
     # 4. Registrar reciclaje en el backend de Spring Boot
     backend_api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
