@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class RecoleccionService {
 
     private static final String QR_PREFIX = "IGCS-CAMION";
-    private static final double DISTANCIA_MAXIMA_PUERTA_METROS = 120.0;
 
     private record QrToken(Long camionId, LocalDateTime expiresAt) {}
 
@@ -72,12 +71,6 @@ public class RecoleccionService {
         Double distancia = gpsService.calcularDistanciaCamionVecino(parsed.camionId(), email);
         if (distancia == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El camion aun no transmite GPS en vivo");
-        }
-        if (distancia > DISTANCIA_MAXIMA_PUERTA_METROS) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "El camion debe estar en tu puerta para iniciar la deteccion. Distancia actual: "
-                            + Math.round(distancia) + " m");
         }
 
         Camion camion = camionRepository.findById(parsed.camionId())
