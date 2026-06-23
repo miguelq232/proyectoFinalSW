@@ -120,6 +120,11 @@ public class PuntosService {
         registro.setDescripcion(null);
 
         puntosRepository.save(registro);
+        recoleccionService.registrarItemSesion(
+                request.getSessionToken(),
+                registro.getTipoResiduo(),
+                registro.getCantidad(),
+                registro.getPuntosOtorgados());
 
         return new RegistrarReciclajeResponseDTO(
                 vecino.getPuntosAcumulados(), vecino.getNombre() + " " + vecino.getApellido());

@@ -4,10 +4,16 @@ import com.igcsscz.backend.modules.camion.Camion;
 import com.igcsscz.backend.modules.camion.CamionRepository;
 import com.igcsscz.backend.modules.gps.GpsService;
 import com.igcsscz.backend.modules.recoleccion.dto.CamionQrResponseDTO;
+import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionItemResumenDTO;
+import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionResumenDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionSesionResponseDTO;
 import com.igcsscz.backend.modules.vecino.Vecino;
 import com.igcsscz.backend.modules.vecino.VecinoRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,16 +25,28 @@ import org.springframework.web.server.ResponseStatusException;
 public class RecoleccionService {
 
     private static final String QR_PREFIX = "IGCS-CAMION";
+    private static final double VALOR_PUNTO_BS = 0.10;
 
     private record QrToken(Long camionId, LocalDateTime expiresAt) {}
 
     private record SesionRecoleccion(Long vecinoId, Long camionId, LocalDateTime expiresAt) {}
+
+    private static class RecoleccionItem {
+        private final String tipoResiduo;
+        private double cantidad;
+        private int puntos;
+
+        private RecoleccionItem(String tipoResiduo) {
+            this.tipoResiduo = tipoResiduo;
+        }
+    }
 
     private final CamionRepository camionRepository;
     private final VecinoRepository vecinoRepository;
     private final GpsService gpsService;
     private final ConcurrentHashMap<String, QrToken> qrTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, SesionRecoleccion> sesiones = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Map<String, RecoleccionItem>> resumenes = new ConcurrentHashMap<>();
 
     public RecoleccionService(
             CamionRepository camionRepository,
@@ -79,6 +97,7 @@ public class RecoleccionService {
         String sessionToken = UUID.randomUUID().toString();
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(20);
         sesiones.put(sessionToken, new SesionRecoleccion(vecino.getId(), parsed.camionId(), expiresAt));
+        resumenes.put(sessionToken, new LinkedHashMap<>());
 
         return new RecoleccionSesionResponseDTO(
                 sessionToken,
@@ -105,16 +124,73 @@ public class RecoleccionService {
         }
     }
 
-    public void finalizarSesion(String email, String sessionToken) {
+    public void registrarItemSesion(String sessionToken, String tipoResiduo, Double cantidad, Integer puntos) {
         if (sessionToken == null || sessionToken.isBlank()) {
             return;
         }
 
-        Vecino vecino = buscarVecinoPorEmail(email);
         SesionRecoleccion sesion = sesiones.get(sessionToken.trim());
-        if (sesion != null && sesion.vecinoId().equals(vecino.getId())) {
-            sesiones.remove(sessionToken.trim());
+        if (sesion == null || sesion.expiresAt().isBefore(LocalDateTime.now())) {
+            return;
         }
+
+        Map<String, RecoleccionItem> resumen = resumenes.computeIfAbsent(sessionToken.trim(), ignored -> new LinkedHashMap<>());
+        String tipo = tipoResiduo != null && !tipoResiduo.isBlank() ? tipoResiduo.trim().toUpperCase() : "NADA";
+        RecoleccionItem item = resumen.computeIfAbsent(tipo, RecoleccionItem::new);
+        item.cantidad += cantidad != null && cantidad > 0 ? cantidad : 1.0;
+        item.puntos += puntos != null ? puntos : 0;
+    }
+
+    public RecoleccionResumenDTO finalizarSesion(String email, String sessionToken) {
+        if (sessionToken == null || sessionToken.isBlank()) {
+            return resumenVacio(null, null);
+        }
+
+        Vecino vecino = buscarVecinoPorEmail(email);
+        String token = sessionToken.trim();
+        SesionRecoleccion sesion = sesiones.get(token);
+        if (sesion != null && sesion.vecinoId().equals(vecino.getId())) {
+            sesiones.remove(token);
+            return construirResumen(token, sesion);
+        }
+
+        return resumenVacio(token, null);
+    }
+
+    private RecoleccionResumenDTO construirResumen(String sessionToken, SesionRecoleccion sesion) {
+        Map<String, RecoleccionItem> resumen = resumenes.remove(sessionToken);
+        List<RecoleccionItemResumenDTO> items = new ArrayList<>();
+        int totalItems = 0;
+        double totalCantidad = 0.0;
+        int totalPuntos = 0;
+
+        if (resumen != null) {
+            for (RecoleccionItem item : resumen.values()) {
+                totalItems += 1;
+                totalCantidad += item.cantidad;
+                totalPuntos += item.puntos;
+                items.add(new RecoleccionItemResumenDTO(item.tipoResiduo, item.cantidad, item.puntos));
+            }
+        }
+
+        Camion camion = camionRepository.findById(sesion.camionId()).orElse(null);
+        return new RecoleccionResumenDTO(
+                sessionToken,
+                sesion.camionId(),
+                camion != null ? camion.getPlaca() : null,
+                totalItems,
+                totalCantidad,
+                totalPuntos,
+                redondearDosDecimales(totalPuntos * VALOR_PUNTO_BS),
+                items);
+    }
+
+    private RecoleccionResumenDTO resumenVacio(String sessionToken, Long camionId) {
+        return new RecoleccionResumenDTO(sessionToken, camionId, null, 0, 0.0, 0, 0.0, List.of());
+    }
+
+    private double redondearDosDecimales(double valor) {
+        return Math.round(valor * 100.0) / 100.0;
     }
 
     private Vecino buscarVecinoPorEmail(String email) {
@@ -164,7 +240,13 @@ public class RecoleccionService {
     private void limpiarExpirados() {
         LocalDateTime now = LocalDateTime.now();
         qrTokens.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
-        sesiones.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
+        sesiones.entrySet().removeIf(entry -> {
+            boolean expirada = entry.getValue().expiresAt().isBefore(now);
+            if (expirada) {
+                resumenes.remove(entry.getKey());
+            }
+            return expirada;
+        });
     }
 
     private record ParsedQr(Long camionId, String token) {}

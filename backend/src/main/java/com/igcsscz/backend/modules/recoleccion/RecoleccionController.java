@@ -2,6 +2,7 @@ package com.igcsscz.backend.modules.recoleccion;
 
 import com.igcsscz.backend.modules.recoleccion.dto.CamionQrResponseDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.IniciarRecoleccionRequestDTO;
+import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionResumenDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionSesionResponseDTO;
 import java.security.Principal;
 import org.springframework.http.ResponseEntity;
@@ -38,11 +39,10 @@ public class RecoleccionController {
     }
 
     @DeleteMapping("/sesiones/{sessionToken}")
-    public ResponseEntity<Void> finalizarSesion(Principal principal, @PathVariable String sessionToken) {
+    public ResponseEntity<RecoleccionResumenDTO> finalizarSesion(Principal principal, @PathVariable String sessionToken) {
         if (principal == null) {
             return ResponseEntity.badRequest().build();
         }
-        recoleccionService.finalizarSesion(principal.getName(), sessionToken);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(recoleccionService.finalizarSesion(principal.getName(), sessionToken));
     }
 }

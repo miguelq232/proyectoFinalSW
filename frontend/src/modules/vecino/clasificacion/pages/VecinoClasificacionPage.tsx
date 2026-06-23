@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import jsQR from "jsqr"
-import { AlertCircle, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, ScanLine, Sparkles, X } from "lucide-react"
+import { AlertCircle, Banknote, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, ScanLine, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +34,23 @@ type RecoleccionSesion = {
   expiresAt: string
 }
 
+type RecoleccionItemResumen = {
+  tipoResiduo: string
+  cantidad: number
+  puntos: number
+}
+
+type RecoleccionResumen = {
+  sessionToken: string | null
+  camionId: number | null
+  placa: string | null
+  totalItems: number
+  totalCantidad: number
+  totalPuntos: number
+  descuentoEstimadoBs: number
+  items: RecoleccionItemResumen[]
+}
+
 const labels: Record<string, string> = {
   BIODEGRADABLE: "Biodegradable",
   CARDBOARD: "Cartón",
@@ -61,6 +78,7 @@ export default function VecinoClasificacionPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<ClasificacionResponse | null>(null)
+  const [collectionSummary, setCollectionSummary] = useState<RecoleccionResumen | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -100,6 +118,7 @@ export default function VecinoClasificacionPage() {
   async function startCamera() {
     setError(null)
     setResult(null)
+    setCollectionSummary(null)
 
     if (!collectionSession) {
       setError("Primero escanea el QR dinámico del camión cuando esté en tu puerta.")
@@ -157,6 +176,7 @@ export default function VecinoClasificacionPage() {
   async function startQrScanner() {
     setError(null)
     setResult(null)
+    setCollectionSummary(null)
     resetCapture()
 
     const blockMessage = getCameraBlockMessage()
@@ -236,6 +256,7 @@ export default function VecinoClasificacionPage() {
       const res = await api.post<RecoleccionSesion>("/recoleccion/sesiones", { qrPayload })
       setCollectionSession(res.data)
       setResult(null)
+      setCollectionSummary(null)
       resetCapture()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -247,9 +268,10 @@ export default function VecinoClasificacionPage() {
   async function finalizarSesionRecoleccion() {
     if (!collectionSession) return
     try {
-      await api.delete(`/recoleccion/sesiones/${collectionSession.sessionToken}`)
-    } catch {
-      // La sesión también expira sola en backend; no bloqueamos el cierre local.
+      const res = await api.delete<RecoleccionResumen>(`/recoleccion/sesiones/${collectionSession.sessionToken}`)
+      setCollectionSummary(res.data)
+    } catch (err) {
+      setError(getErrorMessage(err))
     } finally {
       setCollectionSession(null)
       resetCapture()
@@ -475,6 +497,65 @@ export default function VecinoClasificacionPage() {
               </div>
             </CardContent>
           </Card>
+
+          {collectionSummary ? (
+            <Card className="border-emerald-200 bg-white shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg text-emerald-950">
+                  <Banknote className="size-5 text-emerald-700" aria-hidden />
+                  Resumen de recolección
+                </CardTitle>
+                <CardDescription>
+                  Materiales registrados mientras el camión {collectionSummary.placa || "asignado"} estuvo en servicio.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <ResultBox label="Materiales" value={`${collectionSummary.totalItems}`} />
+                  <ResultBox label="Unidades" value={`${collectionSummary.totalCantidad.toFixed(0)}`} />
+                  <ResultBox label="Puntos ganados" value={`+${collectionSummary.totalPuntos}`} />
+                  <ResultBox label="Descuento estimado" value={`Bs ${collectionSummary.descuentoEstimadoBs.toFixed(2)}`} />
+                </div>
+
+                {collectionSummary.items.length > 0 ? (
+                  <div className="overflow-hidden rounded-lg border border-emerald-100">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-emerald-50 text-xs uppercase text-emerald-800">
+                        <tr>
+                          <th className="px-3 py-2">Residuo</th>
+                          <th className="px-3 py-2 text-right">Cantidad</th>
+                          <th className="px-3 py-2 text-right">Puntos</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-50">
+                        {collectionSummary.items.map((item) => (
+                          <tr key={item.tipoResiduo}>
+                            <td className="px-3 py-2 font-semibold text-neutral-800">
+                              {labels[item.tipoResiduo] || item.tipoResiduo}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-neutral-700">
+                              {item.cantidad.toFixed(0)}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-emerald-800">
+                              +{item.puntos}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-neutral-100 bg-neutral-50 p-3 text-sm text-neutral-500">
+                    No se registraron residuos en esta recolección.
+                  </p>
+                )}
+
+                <p className="text-xs text-neutral-500">
+                  Equivalencia usada: 1 punto = Bs 0.10 para descuento referencial en tu próxima factura.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {result ? (
             <Card className="border-emerald-200 bg-emerald-50 shadow-sm">
