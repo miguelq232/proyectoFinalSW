@@ -338,7 +338,7 @@ export default function VecinoClasificacionPage() {
                 </div>
                 {textoVision ? (
                   <div className="rounded-lg border border-emerald-200 bg-white p-4">
-                    <p className="text-xs font-semibold uppercase text-emerald-700/70">Lo que Gemini ve</p>
+                    <p className="text-xs font-semibold uppercase text-emerald-700/70">Lo que se ve en la imagen</p>
                     {result.objeto_detectado ? (
                       <p className="mt-1 text-sm font-bold text-emerald-950">{result.objeto_detectado}</p>
                     ) : null}
