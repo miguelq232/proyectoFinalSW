@@ -21,18 +21,18 @@ export default function HomePage() {
     navigate("/", { replace: true })
   }
 
-  // Generar NAV_ITEMS dinÃ¡micamente segÃºn rol
+  // Generar NAV_ITEMS dinámicamente según rol
   const navItems = (() => {
     switch (rol) {
       case "OPERADOR":
         return [
-          { to: "/home/operador", label: "Mi Zona y CamiÃ³n", icon: Compass, end: true },
+          { to: "/home/operador", label: "Mi Zona y Camión", icon: Compass, end: true },
         ]
       case "VECINO":
         return [
-          { to: "/home/mapa-recoleccion", label: "Radar RecolecciÃ³n", icon: Navigation, end: true },
+          { to: "/home/mapa-recoleccion", label: "Radar Recolección", icon: Navigation, end: true },
           { to: "/home/clasificar-residuo", label: "Clasificar Residuo", icon: Camera, end: true },
-          { to: "/home/perfil-vecino", label: "Perfil EcolÃ³gico", icon: User, end: true },
+          { to: "/home/perfil-vecino", label: "Perfil Ecológico", icon: User, end: true },
         ]
       case "ADMINISTRADOR":
       default:
@@ -42,7 +42,7 @@ export default function HomePage() {
           { to: "/home/usuarios", label: "Usuarios", icon: Users, end: false },
           { to: "/home/camiones", label: "Camiones", icon: Truck, end: false },
           { to: "/home/zonas", label: "Zonas", icon: MapPin, end: false },
-          { to: "/home/config-puntos", label: "ConfiguraciÃ³n", icon: Settings, end: false },
+          { to: "/home/config-puntos", label: "Configuración", icon: Settings, end: false },
           { to: "/home/reportes", label: "Reportes", icon: BarChart3, end: false },
         ]
     }
@@ -57,13 +57,13 @@ export default function HomePage() {
           </span>
           <div>
             <p className="text-sm font-semibold leading-tight tracking-tight">IGCS SCZ</p>
-            <p className="text-xs text-white/70">GestiÃ³n de residuos</p>
+            <p className="text-xs text-white/70">Gestión de residuos</p>
           </div>
         </div>
 
         <div className="border-b border-green-700/50 px-4 py-4">
           <p className="truncate text-sm font-medium">{nombre}</p>
-          <p className="truncate text-xs uppercase tracking-wide text-white/60">{rol ?? "â€”"}</p>
+          <p className="truncate text-xs uppercase tracking-wide text-white/60">{rol ?? "—"}</p>
         </div>
 
         <nav className="flex flex-1 flex-row gap-1 overflow-x-auto px-2 py-3 md:flex-col md:overflow-y-auto md:px-3">
@@ -82,7 +82,7 @@ export default function HomePage() {
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-900/40 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-900/70"
           >
             <LogOut className="size-4" aria-hidden />
-            Cerrar sesiÃ³n
+            Cerrar sesión
           </button>
         </div>
       </aside>

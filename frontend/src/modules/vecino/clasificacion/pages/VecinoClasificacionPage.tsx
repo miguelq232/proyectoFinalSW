@@ -22,12 +22,12 @@ type ClasificacionResponse = {
 
 const labels: Record<string, string> = {
   BIODEGRADABLE: "Biodegradable",
-  CARDBOARD: "Carton",
+  CARDBOARD: "Cartón",
   CLOTH: "Tela",
   GLASS: "Vidrio",
   METAL: "Metal",
   PAPER: "Papel",
-  PLASTIC: "Plastico",
+  PLASTIC: "Plástico",
   DESCONOCIDO: "Desconocido",
 }
 
@@ -86,7 +86,7 @@ export default function VecinoClasificacionPage() {
       }
       setCameraActive(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo abrir la camara")
+      setError(err instanceof Error ? err.message : "No se pudo abrir la cámara")
     }
   }
 
@@ -174,7 +174,7 @@ export default function VecinoClasificacionPage() {
       <header className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Clasificar residuo</h1>
         <p className="text-neutral-500">
-          Captura una foto del residuo con tu camara y registra los puntos en tu perfil.
+          Captura una foto del residuo con tu cámara y registra los puntos en tu perfil.
         </p>
       </header>
 
@@ -190,7 +190,7 @@ export default function VecinoClasificacionPage() {
           <CardHeader className="border-b border-neutral-100 bg-green-50/60">
             <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
               <Camera className="size-5 text-green-700" aria-hidden />
-              Camara de clasificacion
+              Cámara de clasificación
             </CardTitle>
             <CardDescription>
               Centra el residuo en la imagen y evita fondos con muchos objetos.
@@ -225,7 +225,7 @@ export default function VecinoClasificacionPage() {
                   disabled={loadingProfile || submitting}
                 >
                   <Camera className="size-4" aria-hidden />
-                  Abrir camara
+                  Abrir cámara
                 </Button>
               ) : (
                 <>
@@ -264,7 +264,7 @@ export default function VecinoClasificacionPage() {
           <Card className="border-neutral-100 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Datos del registro</CardTitle>
-              <CardDescription>El codigo se toma automaticamente de tu cuenta.</CardDescription>
+              <CardDescription>El código se toma automáticamente de tu cuenta.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="rounded-lg bg-neutral-50 p-3">
@@ -274,7 +274,7 @@ export default function VecinoClasificacionPage() {
                 </p>
               </div>
               <div className="rounded-lg bg-neutral-50 p-3">
-                <p className="text-xs font-semibold uppercase text-neutral-400">Codigo</p>
+                <p className="text-xs font-semibold uppercase text-neutral-400">Código</p>
                 <p className="font-mono font-semibold text-neutral-800">{codigoCliente || "..."}</p>
               </div>
               <div className="rounded-lg bg-neutral-50 p-3">
@@ -292,7 +292,7 @@ export default function VecinoClasificacionPage() {
                   Resultado
                 </CardTitle>
                 <CardDescription>
-                  {result.backend_success ? "Registro sincronizado con tus puntos." : "Clasificacion local sin sincronizar."}
+                  {result.backend_success ? "Registro sincronizado con tus puntos." : "Clasificación local sin sincronizar."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

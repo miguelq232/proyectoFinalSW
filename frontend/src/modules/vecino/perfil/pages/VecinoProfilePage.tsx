@@ -217,7 +217,7 @@ export default function VecinoProfilePage() {
         </div>
         <h1 className="text-2xl font-bold text-neutral-800">Perfil de Vecino no Encontrado</h1>
         <p className="text-neutral-500">
-          No pudimos localizar la cuenta de Vecino asociada a tus datos de sesi├│n.
+          No pudimos localizar la cuenta de Vecino asociada a tus datos de sesión.
         </p>
       </div>
     )
@@ -226,7 +226,7 @@ export default function VecinoProfilePage() {
   return (
     <div className="p-6 md:p-10 space-y-6">
       <header className="text-left space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Mi Perfil Ecol├│gico</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Mi Perfil Ecológico</h1>
         <p className="text-neutral-500">Registra las coordenadas de tu domicilio en el mapa y administra tu cuenta verde.</p>
       </header>
 
@@ -251,9 +251,9 @@ export default function VecinoProfilePage() {
             <CardHeader className="bg-green-50/50 border-b border-neutral-100 py-4">
               <CardTitle className="text-base font-bold text-neutral-800 flex items-center gap-2">
                 <Landmark className="size-5 text-green-600" />
-                Registrar Ubicaci├│n de mi Domicilio
+                Registrar Ubicación de mi Domicilio
               </CardTitle>
-              <CardDescription>Haz clic en el mapa para marcar exactamente d├│nde queda tu hogar.</CardDescription>
+              <CardDescription>Haz clic en el mapa para marcar exactamente dónde queda tu hogar.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="h-[380px] w-full relative">
@@ -270,7 +270,7 @@ export default function VecinoProfilePage() {
 
           {/* Formulario */}
           <form onSubmit={handleSave} className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm space-y-4 text-left">
-            <h3 className="font-bold text-neutral-800 text-lg border-b border-neutral-50 pb-2">Informaci├│n Domiciliaria</h3>
+            <h3 className="font-bold text-neutral-800 text-lg border-b border-neutral-50 pb-2">Información Domiciliaria</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -302,7 +302,7 @@ export default function VecinoProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="telefono" className="font-semibold text-neutral-700">
-                  Tel├®fono
+                  Teléfono
                 </Label>
                 <Input
                   id="telefono"
@@ -334,7 +334,7 @@ export default function VecinoProfilePage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="direccion" className="font-semibold text-neutral-700">
-                Direcci├│n Domiciliaria Exacta
+                Dirección Domiciliaria Exacta
               </Label>
               <Input
                 id="direccion"
@@ -366,12 +366,12 @@ export default function VecinoProfilePage() {
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold flex items-center justify-center gap-2 h-11 shadow-sm"
             >
               {submitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Guardar Mi Perfil y Ubicaci├│n
+              Guardar Mi Perfil y Ubicación
             </Button>
           </form>
         </div>
 
-        {/* Tarjeta Ecol├│gica y QR */}
+        {/* Tarjeta ecológica y QR */}
         <div className="space-y-6">
           {/* Tarjeta de Puntos */}
           <Card className="border-none bg-gradient-to-br from-green-700 via-green-800 to-emerald-950 text-white shadow-lg overflow-hidden relative group text-left">
@@ -379,14 +379,14 @@ export default function VecinoProfilePage() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs bg-white/20 border border-white/25 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Socio Ecol├│gico
+                  Socio Ecológico
                 </span>
                 <Award className="size-6 text-emerald-300 animate-pulse" />
               </div>
               <CardTitle className="text-2xl font-bold pt-4">
                 {vecino.nombre} {vecino.apellido}
               </CardTitle>
-              <CardDescription className="text-green-200/80">C├│digo Verde de Reciclador Urbano</CardDescription>
+              <CardDescription className="text-green-200/80">Código Verde de Reciclador Urbano</CardDescription>
             </CardHeader>
             <CardContent className="pt-4 space-y-6">
               <div className="flex items-baseline justify-between border-t border-white/10 pt-4">
@@ -403,7 +403,7 @@ export default function VecinoProfilePage() {
                 </div>
               </div>
 
-              {/* Barra de Progreso hacia Pr├│ximo Nivel */}
+              {/* Barra de progreso hacia próximo nivel */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs text-green-200/90 font-medium">
                   <span>Progreso de Nivel</span>
@@ -421,14 +421,14 @@ export default function VecinoProfilePage() {
             </CardContent>
           </Card>
 
-          {/* C├│digo QR */}
+          {/* Código QR */}
           <Card className="border-neutral-100 shadow-sm text-center p-6">
             <h3 className="font-bold text-neutral-800 text-lg mb-1.5 flex items-center justify-center gap-2">
               <QrCode className="size-5 text-green-600" />
-              C├│digo QR Ecol├│gico
+              Código QR Ecológico
             </h3>
             <p className="text-xs text-neutral-400 mb-6 max-w-xs mx-auto">
-              Presenta este c├│digo al operario del cami├│n al entregar tus residuos reciclables para registrar tus puntos acumulados.
+              Presenta este código al operario del camión al entregar tus residuos reciclables para registrar tus puntos acumulados.
             </p>
 
             <div className="flex flex-col items-center justify-center">
