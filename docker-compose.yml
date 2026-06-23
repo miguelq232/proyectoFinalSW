@@ -27,6 +27,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   arduino:
     build:
@@ -39,7 +45,14 @@ services:
     volumes:
       - arduino_uploads:/app/static/uploads
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/', timeout=5)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
 
   frontend:
     build:
@@ -51,8 +64,10 @@ services:
     expose:
       - "80"
     depends_on:
-      - backend
-      - arduino
+      backend:
+        condition: service_healthy
+      arduino:
+        condition: service_healthy
 
 volumes:
   redis_data:
