@@ -10,14 +10,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_FALLBACK_MODELS = [
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_FALLBACK_MODELS = [
     model.strip()
-    for model in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-flash-latest,gemini-3.5-flash").split(",")
+    for model in os.getenv("OPENAI_FALLBACK_MODELS", "gpt-4.1-mini,gpt-4o").split(",")
     if model.strip()
 ]
-GEMINI_API_BASE_URL = os.getenv("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/models")
+OPENAI_RESPONSES_URL = os.getenv("OPENAI_RESPONSES_URL", "https://api.openai.com/v1/responses")
 
 CLASES_PERMITIDAS = {
     "BIODEGRADABLE",
@@ -48,7 +48,6 @@ def _normalizar_clase(valor):
     aliases = {
         "CARTON": "CARDBOARD",
         "CARTON_CORRUGADO": "CARDBOARD",
-        "CARDBOARD_BOX": "CARDBOARD",
         "CAJA": "CARDBOARD",
         "CAJA_DE_CARTON": "CARDBOARD",
         "PAPEL": "PAPER",
@@ -148,11 +147,12 @@ def _jpeg_base64(imagen):
     return base64.b64encode(buffer.tobytes()).decode("utf-8")
 
 
-def _imagenes_para_gemini(imagen_path):
+def _imagenes_para_openai(imagen_path):
     imagen = cv2.imread(imagen_path)
     if imagen is None:
         with open(imagen_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8"), None
+            raw = base64.b64encode(image_file.read()).decode("utf-8")
+            return raw, None
 
     alto, ancho = imagen.shape[:2]
     margen_x = int(ancho * 0.22)
@@ -161,101 +161,106 @@ def _imagenes_para_gemini(imagen_path):
     return _jpeg_base64(imagen), _jpeg_base64(centro)
 
 
-def _gemini_payload(base64_image, base64_center_image=None):
-    prompt = """
-Analiza la imagen e identifica el objeto principal visible en el centro.
-Recibiras una imagen completa y, si esta disponible, un recorte central. Basa la
-clasificacion principalmente en el recorte central.
+def _data_url(base64_image):
+    return f"data:image/jpeg;base64,{base64_image}"
 
-Tu objetivo es clasificar el MATERIAL predominante del objeto principal.
-NO debes decidir si es basura, residuo o desperdicio.
 
-El objeto puede estar nuevo, limpio, usado, en una mesa, en una mano o en el piso.
-Igual debes clasificarlo segun su material visible.
+def _prompt():
+    return """
+Analiza la imagen y clasifica el material predominante del objeto principal.
 
-Prioridad visual:
-- Enfocate en el tercio central de la imagen.
-- Si hay muchos objetos, ignora fondo, mesa, manos, pared, piso y objetos laterales.
-- Clasifica el objeto que este mas centrado, mas grande o mas cercano a la camara.
-- Si hay varias botellas/envases/latas/hojas del mismo material, cuenta cuantos objetos
-  principales del mismo tipo son visibles.
+Recibiras la imagen completa y, si esta disponible, un recorte central. Basa la
+clasificacion principalmente en el recorte central. Ignora fondo, manos, mesa,
+pared, piso y objetos laterales.
 
-Clases permitidas:
-BIODEGRADABLE, CARDBOARD, CLOTH, GLASS, METAL, PAPER, PLASTIC, DESCONOCIDO.
+Objetivo:
+- Identifica que objeto parece ser.
+- Clasifica su material en una clase exacta:
+  BIODEGRADABLE, CARDBOARD, CLOTH, GLASS, METAL, PAPER, PLASTIC, DESCONOCIDO.
+- Cuenta cuantos objetos principales del mismo tipo/material son visibles.
+- Evita DESCONOCIDO si puedes inferir razonablemente el material.
 
 Reglas:
-- Siempre intenta clasificar por material visible antes de usar DESCONOCIDO.
-- Evita DESCONOCIDO si puedes inferir razonablemente el material.
-- No importa si el objeto no parece basura; si parece de plastico, papel, carton,
-  vidrio, metal, tela u organico, devuelve esa categoria.
-- Si ves una botella plastica, envase plastico, bolsa plastica o tapa plastica: PLASTIC.
-- Si ves una hoja simple, hoja blanca, cuaderno, papel impreso, ticket o servilleta seca: PAPER.
-- Si ves una caja, carton corrugado o empaque de carton: CARDBOARD.
-- Si ves una botella, vaso o frasco de vidrio: GLASS.
-- Si ves una lata, herramienta, pieza o envase metalico: METAL.
-- Si ves ropa, tela, trapo o mochila de tela: CLOTH.
-- Si ves cascara, fruta, verdura, comida natural o restos organicos: BIODEGRADABLE.
-- Usa DESCONOCIDO solo si la imagen esta vacia, totalmente borrosa o no hay ningun
-  indicio razonable del material.
+- Botella/envase/bolsa/tapa/control remoto plastico: PLASTIC.
+- Hoja simple, hoja blanca, papel impreso, cuaderno, ticket o servilleta seca: PAPER.
+- Caja, carton corrugado o empaque de carton: CARDBOARD.
+- Botella, vaso o frasco de vidrio: GLASS.
+- Lata, herramienta, pieza o envase metalico: METAL.
+- Ropa, tela, trapo o mochila de tela: CLOTH.
+- Cascara, fruta, verdura, comida natural o restos organicos: BIODEGRADABLE.
+- Usa DESCONOCIDO solo si la imagen esta vacia, totalmente borrosa o no hay indicio del material.
 
-Devuelve solo JSON valido, sin markdown.
-
-Puntos:
-BIODEGRADABLE=5
-CARDBOARD=10
-CLOTH=15
-GLASS=20
-METAL=25
-PAPER=10
-PLASTIC=15
-DESCONOCIDO=0
-
-Formato exacto:
+Devuelve solo JSON valido, sin markdown, con este formato:
 {
   "clasificacion": "PLASTIC",
   "confianza": 0.95,
   "descripcion": "Objeto de plastico transparente",
   "objeto_detectado": "botella plastica",
   "cantidad_detectada": 2,
-  "texto_vision": "Veo un objeto que parece de plastico. Lo clasifico por su material predominante.",
-  "puntos": 15
+  "texto_vision": "Veo dos botellas plasticas centradas en la imagen.",
+  "puntos": 30
 }
 """.strip()
 
-    parts = [
-        {"text": prompt},
-        {
-            "inline_data": {
-                "mime_type": "image/jpeg",
-                "data": base64_image,
-            }
-        },
+
+def _openai_payload(model, base64_image, base64_center_image=None):
+    content = [
+        {"type": "input_text", "text": _prompt()},
+        {"type": "input_image", "image_url": _data_url(base64_image), "detail": "high"},
     ]
     if base64_center_image:
-        parts.extend(
+        content.extend(
             [
-                {"text": "Recorte central: usa esta imagen como prioridad para clasificar."},
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": base64_center_image,
-                    }
-                },
+                {"type": "input_text", "text": "Recorte central prioritario:"},
+                {"type": "input_image", "image_url": _data_url(base64_center_image), "detail": "high"},
             ]
         )
 
     return {
-        "contents": [
-            {
-                "role": "user",
-                "parts": parts,
+        "model": model,
+        "input": [{"role": "user", "content": content}],
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "clasificacion_residuo",
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "clasificacion": {"type": "string"},
+                        "confianza": {"type": "number"},
+                        "descripcion": {"type": "string"},
+                        "objeto_detectado": {"type": "string"},
+                        "cantidad_detectada": {"type": "integer"},
+                        "texto_vision": {"type": "string"},
+                        "puntos": {"type": "integer"},
+                    },
+                    "required": [
+                        "clasificacion",
+                        "confianza",
+                        "descripcion",
+                        "objeto_detectado",
+                        "cantidad_detectada",
+                        "texto_vision",
+                        "puntos",
+                    ],
+                },
+                "strict": True,
             }
-        ],
-        "generationConfig": {
-            "temperature": 0.1,
-            "responseMimeType": "application/json",
         },
     }
+
+
+def _extract_openai_text(data):
+    if data.get("output_text"):
+        return data["output_text"]
+
+    chunks = []
+    for item in data.get("output", []):
+        for content in item.get("content", []):
+            if content.get("type") in {"output_text", "text"} and content.get("text"):
+                chunks.append(content["text"])
+    return "\n".join(chunks).strip()
 
 
 def detectar_reciclable(imagen_path, nombre_archivo):
@@ -269,8 +274,8 @@ def detectar_reciclable(imagen_path, nombre_archivo):
     error = None
     img_anotada = cv2.imread(imagen_path)
 
-    if not GEMINI_API_KEY:
-        print("Error Gemini: falta GEMINI_API_KEY en arduino/.env")
+    if not OPENAI_API_KEY:
+        print("Error OpenAI: falta OPENAI_API_KEY en arduino/.env")
         return _guardar_resultado(
             img_anotada,
             clase_final,
@@ -281,35 +286,37 @@ def detectar_reciclable(imagen_path, nombre_archivo):
             texto_vision,
             puntos_sugeridos,
             nombre_archivo,
-            "Falta GEMINI_API_KEY en arduino/.env",
+            "Falta OPENAI_API_KEY en arduino/.env",
         )
 
     try:
-        base64_image, base64_center_image = _imagenes_para_gemini(imagen_path)
-        models = [GEMINI_MODEL, *[model for model in GEMINI_FALLBACK_MODELS if model != GEMINI_MODEL]]
+        base64_image, base64_center_image = _imagenes_para_openai(imagen_path)
+        models = [OPENAI_MODEL, *[model for model in OPENAI_FALLBACK_MODELS if model != OPENAI_MODEL]]
         response = None
         last_error_text = None
 
         for model in models:
-            api_url = f"{GEMINI_API_BASE_URL}/{model}:generateContent"
             response = requests.post(
-                f"{api_url}?key={GEMINI_API_KEY}",
-                headers={"Content-Type": "application/json"},
-                json=_gemini_payload(base64_image, base64_center_image),
-                timeout=30,
+                OPENAI_RESPONSES_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=_openai_payload(model, base64_image, base64_center_image),
+                timeout=45,
             )
             if response.status_code == 200:
-                print(f"[Gemini model] {model}")
+                print(f"[OpenAI model] {model}")
                 break
-            last_error_text = response.text[:500]
-            print(f"Error Gemini HTTP {response.status_code} con {model}: {last_error_text}")
-            if response.status_code not in {429, 404}:
+            last_error_text = response.text[:700]
+            print(f"Error OpenAI HTTP {response.status_code} con {model}: {last_error_text}")
+            if response.status_code not in {400, 404, 429, 500, 503}:
                 break
 
         if response is None or response.status_code != 200:
             error = (
-                "Gemini no pudo clasificar la imagen. "
-                "Si el codigo es 429, se agoto la cuota temporal de la API; espera unos minutos o usa otra API key."
+                "OpenAI no pudo clasificar la imagen. Revisa la API key, el modelo configurado "
+                "o la cuota disponible."
             )
             return _guardar_resultado(
                 img_anotada,
@@ -325,15 +332,10 @@ def detectar_reciclable(imagen_path, nombre_archivo):
             )
 
         data = response.json()
-        texto = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
-        )
+        texto = _extract_openai_text(data)
         resultado = _extraer_json(texto)
-        print(f"[Gemini raw text] {texto[:1000]}")
-        print(f"[Gemini parsed json] {resultado}")
+        print(f"[OpenAI raw text] {texto[:1000]}")
+        print(f"[OpenAI parsed json] {resultado}")
 
         clase_final = _normalizar_clase(
             _buscar_valor(resultado, "clasificacion", "categoria", "category", "clase", "class", "material")
@@ -370,18 +372,15 @@ def detectar_reciclable(imagen_path, nombre_archivo):
             if clase_final != "DESCONOCIDO" and confianza_final == 0:
                 confianza_final = 0.65
 
-        puntos_sugeridos = int(
-            _buscar_valor(resultado, "puntos", "points", "score_points") or PUNTOS_CLASIFICACION[clase_final]
-        )
-        puntos_sugeridos = PUNTOS_CLASIFICACION.get(clase_final, puntos_sugeridos) * cantidad_detectada
+        puntos_sugeridos = PUNTOS_CLASIFICACION.get(clase_final, 0) * cantidad_detectada
 
         print(
-            f"[Gemini] clase={clase_final} conf={confianza_final:.2f} "
+            f"[OpenAI] clase={clase_final} conf={confianza_final:.2f} "
             f"cantidad={cantidad_detectada} puntos={puntos_sugeridos} objeto={objeto_detectado} desc={descripcion}"
         )
 
     except Exception as exc:
-        error = f"Error en la consulta a Gemini: {exc}"
+        error = f"Error en la consulta a OpenAI: {exc}"
         print(error)
 
     return _guardar_resultado(
@@ -414,7 +413,7 @@ def _guardar_resultado(
     os.makedirs(os.path.dirname(ruta_guardado), exist_ok=True)
 
     if img_anotada is not None:
-        texto = f"{clase_final} {confianza_final:.2f}"
+        texto = f"{clase_final} x{cantidad_detectada} {confianza_final:.2f}"
         cv2.rectangle(img_anotada, (0, 0), (img_anotada.shape[1], 48), (0, 0, 0), -1)
         cv2.putText(
             img_anotada,
