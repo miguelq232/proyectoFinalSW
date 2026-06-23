@@ -188,3 +188,4 @@ coverage/
 .nyc_output/
 .cache/
 *.cache
+mobil/macos/Flutter/GeneratedPluginRegistrant.swift

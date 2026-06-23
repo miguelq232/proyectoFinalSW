@@ -13,6 +13,7 @@ import ReportesPage from "@/modules/admin/reportes/pages/ReportesPage"
 import ConfigPuntosPage from "@/modules/admin/config/pages/ConfigPuntosPage"
 import VecinoProfilePage from "@/modules/vecino/perfil/pages/VecinoProfilePage"
 import VecinoTrackingPage from "@/modules/vecino/mapa/pages/VecinoTrackingPage"
+import VecinoClasificacionPage from "@/modules/vecino/clasificacion/pages/VecinoClasificacionPage"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { authService } from "@/modules/auth/services/authService"
 
@@ -58,6 +59,7 @@ export function AppRoutes() {
           <Route path="operador" element={<OperadorZonePage />} />
 
           {/* Rutas de Vecino */}
+          <Route path="clasificar-residuo" element={<VecinoClasificacionPage />} />
           <Route path="perfil-vecino" element={<VecinoProfilePage />} />
           <Route path="mapa-recoleccion" element={<VecinoTrackingPage />} />
         </Route>

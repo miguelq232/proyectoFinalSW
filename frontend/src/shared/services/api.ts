@@ -1,7 +1,7 @@
 import axios from "axios"
 import { authService } from "@/modules/auth/services/authService"
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:8080/api") as string
+const API_BASE = (import.meta.env.VITE_API_URL || "/api") as string
 
 export const api = axios.create({
   baseURL: API_BASE,

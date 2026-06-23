@@ -1,4 +1,6 @@
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 from modelo.detector import detectar_reciclable
 import os
 import time
@@ -6,6 +8,8 @@ import uuid # Asegúrate de importar uuid arriba en tu archivo
 import requests
 from arduino_sender import PantallaLCD
 app = Flask(__name__)
+CORS(app)
+load_dotenv()
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -13,7 +17,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 TEMP_FOLDER = os.path.join(UPLOAD_FOLDER, "temp")
-CLASES = ["BIODEGRADABLE", "CARDBOARD", "CLOTH", "GLASS", "METAL", "PAPER", "PLASTIC", "desconocido", "null"]
+CLASES = ["BIODEGRADABLE", "CARDBOARD", "CLOTH", "GLASS", "METAL", "PAPER", "PLASTIC", "DESCONOCIDO", "NULL"]
 
 # Diccionario de puntos por clasificación
 PUNTOS_CLASIFICACION = {
@@ -24,8 +28,8 @@ PUNTOS_CLASIFICACION = {
     "METAL": 25,        # Metal
     "PAPER": 10,        # Papel
     "PLASTIC": 15,      # Plástico
-    "null": 0,           # Nada detectado o error
-    "NULL":0
+    "DESCONOCIDO": 0,
+    "NULL": 0
 }
 
 
@@ -111,7 +115,7 @@ def upload():
 
     # Clasificar con IA
     resultado = detectar_reciclable(ruta_temp, nombre_archivo)
-    clase     = resultado["clase"]
+    clase     = resultado["clase"].upper().strip()
     confianza = resultado["confianza"]
 
     # # Mover a carpeta de clase correspondiente
@@ -133,7 +137,8 @@ def upload():
     lcd.enviar(clase.capitalize(), mensaje_linea_2)
 
     # 4. Registrar reciclaje en el backend de Spring Boot
-    backend_url = "http://localhost:8080/api/puntos/registrar-reciclaje"
+    backend_api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
+    backend_url = f"{backend_api_url.rstrip('/')}/puntos/registrar-reciclaje"
     backend_error = None
     backend_puntos_acumulados = None
     nombre_vecino = None
@@ -180,6 +185,5 @@ if __name__ == "__main__":
         port=3000,
        debug=True,
        use_reloader=False,
-       threaded=False, 
-       ssl_context='adhoc'
+       threaded=False
     )
