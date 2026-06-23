@@ -115,10 +115,18 @@ def upload():
 
     # Clasificar con IA
     resultado = detectar_reciclable(ruta_temp, nombre_archivo)
+    if resultado.get("error"):
+        try:
+            os.remove(ruta_temp)
+        except OSError:
+            pass
+        return jsonify({"error": resultado["error"]}), 503
+
     clase     = resultado["clase"].upper().strip()
     confianza = resultado["confianza"]
     descripcion = resultado.get("descripcion", "Sin descripcion disponible")
     objeto_detectado = resultado.get("objeto_detectado", "No identificado")
+    cantidad_detectada = int(resultado.get("cantidad_detectada", 1) or 1)
     texto_vision = resultado.get("texto_vision", descripcion)
 
     # # Mover a carpeta de clase correspondiente
@@ -176,6 +184,7 @@ def upload():
         "clasificacion":   clase,
         "descripcion":     descripcion,
         "objeto_detectado": objeto_detectado,
+        "cantidad_detectada": cantidad_detectada,
         "texto_vision":    texto_vision,
         "confianza":       round(confianza * 100, 1),
         "puntos":          puntos,

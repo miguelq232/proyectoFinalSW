@@ -13,6 +13,7 @@ type ClasificacionResponse = {
   clasificacion: string
   descripcion?: string
   objeto_detectado?: string
+  cantidad_detectada?: number
   texto_vision?: string
   confianza: number
   puntos: number
@@ -182,7 +183,7 @@ export default function VecinoClasificacionPage() {
       const data = (await response.json()) as ClasificacionResponse
 
       if (!response.ok || data.error) {
-        throw new Error(data.error || "No se pudo clasificar el residuo")
+        throw new Error(data.error || "No se pudo clasificar la imagen")
       }
 
       setResult(data)
@@ -331,6 +332,7 @@ export default function VecinoClasificacionPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <ResultBox label="Material" value={labels[clase] || result.clasificacion} />
                   <ResultBox label="Confianza" value={`${result.confianza}%`} />
+                  <ResultBox label="Cantidad" value={`${result.cantidad_detectada || 1}`} />
                   <ResultBox label="Puntos" value={`+${result.puntos}`} />
                   <ResultBox label="Total" value={result.puntos_acumulados != null ? `${result.puntos_acumulados}` : "-"} />
                 </div>
