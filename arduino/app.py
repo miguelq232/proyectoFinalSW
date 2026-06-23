@@ -117,6 +117,7 @@ def upload():
     resultado = detectar_reciclable(ruta_temp, nombre_archivo)
     clase     = resultado["clase"].upper().strip()
     confianza = resultado["confianza"]
+    descripcion = resultado.get("descripcion", "Sin descripcion disponible")
 
     # # Mover a carpeta de clase correspondiente
     # clase_key = clase if clase in CLASES else "desconocido"
@@ -130,7 +131,7 @@ def upload():
         pass
     
     # Calcular puntos
-    puntos = PUNTOS_CLASIFICACION.get(clase, 1)
+    puntos = PUNTOS_CLASIFICACION.get(clase, resultado.get("puntos_sugeridos", 0))
     
     # 3. ¡Usas el LCD enviando la clase y los puntos!
     mensaje_linea_2 = f"Puntos: {puntos} | {round(confianza * 100)}%"
@@ -171,6 +172,7 @@ def upload():
         "success":         True,
         "codigo_cliente":  codigo_cliente,
         "clasificacion":   clase,
+        "descripcion":     descripcion,
         "confianza":       round(confianza * 100, 1),
         "puntos":          puntos,
         "backend_success": backend_error is None,

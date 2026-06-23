@@ -1,5 +1,7 @@
 import base64
+import json
 import os
+import re
 
 import cv2
 import requests
@@ -8,9 +10,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("ROBOFLOW_API_KEY")
-MODEL_ID = os.getenv("ROBOFLOW_MODEL_ID", "garbage-classification-3/2")
-API_URL = f"https://detect.roboflow.com/{MODEL_ID}"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_API_URL = os.getenv(
+    "GEMINI_API_URL",
+    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+)
 
 CLASES_PERMITIDAS = {
     "BIODEGRADABLE",
@@ -20,115 +25,187 @@ CLASES_PERMITIDAS = {
     "METAL",
     "PAPER",
     "PLASTIC",
+    "DESCONOCIDO",
 }
 
-# Evita falsos positivos como PAPER con caja gigante sobre toda la escena.
-MIN_CONFIDENCE = 0.65
-MAX_BOX_AREA_RATIO = 0.75
+PUNTOS_CLASIFICACION = {
+    "BIODEGRADABLE": 5,
+    "CARDBOARD": 10,
+    "CLOTH": 15,
+    "GLASS": 20,
+    "METAL": 25,
+    "PAPER": 10,
+    "PLASTIC": 15,
+    "DESCONOCIDO": 0,
+}
 
 
 def _normalizar_clase(valor):
-    return str(valor or "").upper().strip()
+    clase = str(valor or "").upper().strip()
+    aliases = {
+        "CARTON": "CARDBOARD",
+        "CARTÓN": "CARDBOARD",
+        "PAPEL": "PAPER",
+        "PLASTICO": "PLASTIC",
+        "PLÁSTICO": "PLASTIC",
+        "VIDRIO": "GLASS",
+        "METALICO": "METAL",
+        "METÁLICO": "METAL",
+        "TELA": "CLOTH",
+        "ROPA": "CLOTH",
+        "ORGANICO": "BIODEGRADABLE",
+        "ORGÁNICO": "BIODEGRADABLE",
+        "BIODEGRADABLE": "BIODEGRADABLE",
+        "UNKNOWN": "DESCONOCIDO",
+        "NULL": "DESCONOCIDO",
+    }
+    clase = aliases.get(clase, clase)
+    return clase if clase in CLASES_PERMITIDAS else "DESCONOCIDO"
 
 
-def _area_ratio(prediccion, ancho, alto):
-    area_imagen = max(ancho * alto, 1)
-    ancho_caja = float(prediccion.get("width", 0) or 0)
-    alto_caja = float(prediccion.get("height", 0) or 0)
-    return (ancho_caja * alto_caja) / area_imagen
+def _extraer_json(texto):
+    texto = str(texto or "").strip()
+    if not texto:
+        return {}
+
+    texto = re.sub(r"^```(?:json)?\s*", "", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"\s*```$", "", texto)
+
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", texto, flags=re.DOTALL)
+        if not match:
+            return {}
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return {}
+
+
+def _gemini_payload(base64_image):
+    prompt = """
+Analiza la foto de un residuo urbano y responde solo JSON valido, sin markdown.
+Debes clasificar el objeto principal en una de estas clases exactas:
+BIODEGRADABLE, CARDBOARD, CLOTH, GLASS, METAL, PAPER, PLASTIC, DESCONOCIDO.
+
+Usa DESCONOCIDO si la imagen no muestra claramente basura reciclable, hay muchos objetos
+sin un principal, o no puedes determinar el material.
+
+Puntos por clase:
+BIODEGRADABLE=5, CARDBOARD=10, CLOTH=15, GLASS=20, METAL=25, PAPER=10, PLASTIC=15, DESCONOCIDO=0.
+
+Formato exacto:
+{
+  "clasificacion": "PLASTIC",
+  "confianza": 0.87,
+  "descripcion": "Botella plastica transparente",
+  "puntos": 15
+}
+""".strip()
+
+    return {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": base64_image,
+                        }
+                    },
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json",
+        },
+    }
 
 
 def detectar_reciclable(imagen_path, nombre_archivo):
     clase_final = "DESCONOCIDO"
     confianza_final = 0.0
+    descripcion = "No se pudo identificar claramente el residuo."
+    puntos_sugeridos = 0
     img_anotada = cv2.imread(imagen_path)
 
-    if not API_KEY:
-        print("Error Roboflow: falta ROBOFLOW_API_KEY en arduino/.env")
-        return _guardar_resultado(img_anotada, clase_final, confianza_final, nombre_archivo)
+    if not GEMINI_API_KEY:
+        print("Error Gemini: falta GEMINI_API_KEY en arduino/.env")
+        return _guardar_resultado(
+            img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
+        )
 
-    if img_anotada is not None:
-        try:
-            with open(imagen_path, "rb") as image_file:
-                base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+    try:
+        with open(imagen_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
-            response = requests.post(
-                f"{API_URL}?api_key={API_KEY}",
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                data=base64_image,
-                timeout=20,
+        response = requests.post(
+            f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
+            json=_gemini_payload(base64_image),
+            timeout=30,
+        )
+
+        if response.status_code != 200:
+            print(f"Error Gemini HTTP {response.status_code}: {response.text[:500]}")
+            return _guardar_resultado(
+                img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
             )
 
-            if response.status_code == 200:
-                alto, ancho = img_anotada.shape[:2]
-                predicciones = response.json().get("predictions", [])
-                predicciones_validas = []
+        data = response.json()
+        texto = (
+            data.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        resultado = _extraer_json(texto)
 
-                for pred in predicciones:
-                    clase = _normalizar_clase(pred.get("class"))
-                    confianza = float(pred.get("confidence", 0) or 0)
-                    ratio = _area_ratio(pred, ancho, alto)
+        clase_final = _normalizar_clase(resultado.get("clasificacion"))
+        confianza_final = float(resultado.get("confianza", 0) or 0)
+        confianza_final = max(0.0, min(confianza_final, 1.0))
+        descripcion = str(resultado.get("descripcion") or descripcion).strip()[:180]
+        puntos_sugeridos = int(resultado.get("puntos", PUNTOS_CLASIFICACION[clase_final]) or 0)
+        puntos_sugeridos = PUNTOS_CLASIFICACION.get(clase_final, puntos_sugeridos)
 
-                    print(f"[IA] pred={clase} conf={confianza:.2f} area={ratio:.2f}")
+        print(
+            f"[Gemini] clase={clase_final} conf={confianza_final:.2f} "
+            f"puntos={puntos_sugeridos} desc={descripcion}"
+        )
 
-                    if clase in {"", "NULL"}:
-                        continue
-                    if clase not in CLASES_PERMITIDAS:
-                        continue
-                    if confianza < MIN_CONFIDENCE:
-                        continue
-                    if ratio > MAX_BOX_AREA_RATIO:
-                        continue
+    except Exception as exc:
+        print(f"Error en la consulta a Gemini: {exc}")
 
-                    pred["_clase_normalizada"] = clase
-                    predicciones_validas.append(pred)
-
-                if predicciones_validas:
-                    mejor = max(predicciones_validas, key=lambda item: item["confidence"])
-                    clase_final = mejor["_clase_normalizada"]
-                    confianza_final = float(mejor["confidence"])
-
-                    for pred in predicciones_validas:
-                        cx = float(pred["x"])
-                        cy = float(pred["y"])
-                        w = float(pred["width"])
-                        h = float(pred["height"])
-
-                        x_min = int(cx - (w / 2))
-                        y_min = int(cy - (h / 2))
-                        x_max = int(cx + (w / 2))
-                        y_max = int(cy + (h / 2))
-
-                        cv2.rectangle(img_anotada, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-                        texto = f'{pred["_clase_normalizada"]} {float(pred["confidence"]):.2f}'
-                        cv2.putText(
-                            img_anotada,
-                            texto,
-                            (x_min, y_min - 8),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
-                            (0, 255, 0),
-                            2,
-                        )
-                else:
-                    print("[IA] Sin predicciones confiables; resultado DESCONOCIDO")
-            else:
-                print(f"Error Roboflow HTTP {response.status_code}: {response.text[:300]}")
-
-        except Exception as exc:
-            print(f"Error en la consulta a Roboflow: {exc}")
-
-    return _guardar_resultado(img_anotada, clase_final, confianza_final, nombre_archivo)
+    return _guardar_resultado(
+        img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
+    )
 
 
-def _guardar_resultado(img_anotada, clase_final, confianza_final, nombre_archivo):
+def _guardar_resultado(img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo):
     ruta_guardado = os.path.join("static", "uploads", clase_final, nombre_archivo)
     os.makedirs(os.path.dirname(ruta_guardado), exist_ok=True)
 
     if img_anotada is not None:
+        texto = f"{clase_final} {confianza_final:.2f}"
+        cv2.rectangle(img_anotada, (0, 0), (img_anotada.shape[1], 48), (0, 0, 0), -1)
+        cv2.putText(
+            img_anotada,
+            texto,
+            (12, 32),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (0, 255, 0),
+            2,
+        )
         cv2.imwrite(ruta_guardado, img_anotada)
 
     return {
         "clase": clase_final,
         "confianza": round(confianza_final, 2),
+        "descripcion": descripcion,
+        "puntos_sugeridos": puntos_sugeridos,
     }

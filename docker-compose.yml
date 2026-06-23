@@ -39,8 +39,8 @@ services:
       context: ./arduino
     restart: unless-stopped
     environment:
-      ROBOFLOW_API_KEY: ${ROBOFLOW_API_KEY}
-      ROBOFLOW_MODEL_ID: ${ROBOFLOW_MODEL_ID:-garbage-classification-3/2}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       BACKEND_API_URL: http://backend:8080/api
     volumes:
       - arduino_uploads:/app/static/uploads

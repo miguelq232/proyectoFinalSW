@@ -11,6 +11,7 @@ type ClasificacionResponse = {
   success: boolean
   codigo_cliente: string
   clasificacion: string
+  descripcion?: string
   confianza: number
   puntos: number
   backend_success: boolean
@@ -330,6 +331,11 @@ export default function VecinoClasificacionPage() {
                   <ResultBox label="Puntos" value={`+${result.puntos}`} />
                   <ResultBox label="Total" value={result.puntos_acumulados != null ? `${result.puntos_acumulados}` : "-"} />
                 </div>
+                {result.descripcion ? (
+                  <p className="rounded-lg bg-white/80 p-3 text-sm font-medium text-emerald-950">
+                    {result.descripcion}
+                  </p>
+                ) : null}
                 {!result.backend_success && result.backend_error ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
                     {result.backend_error}
