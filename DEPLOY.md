@@ -21,6 +21,8 @@ La aplicacion queda publicada en:
 http://TU_IP_DEL_VPS
 ```
 
+En Coolify no publiques el puerto `80` desde `docker-compose.yml`; el servicio `frontend` solo expone el puerto interno `80` para que el proxy de Coolify lo enrute.
+
 ## 3. Ver logs
 
 ```bash
