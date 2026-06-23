@@ -4,6 +4,7 @@ import com.igcsscz.backend.modules.camion.Camion;
 import com.igcsscz.backend.modules.camion.CamionRepository;
 import com.igcsscz.backend.modules.gps.GpsService;
 import com.igcsscz.backend.modules.recoleccion.dto.CamionQrResponseDTO;
+import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionEventoLcdDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionItemResumenDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionResumenDTO;
 import com.igcsscz.backend.modules.recoleccion.dto.RecoleccionSesionResponseDTO;
@@ -26,6 +27,7 @@ public class RecoleccionService {
 
     private static final String QR_PREFIX = "IGCS-CAMION";
     private static final double VALOR_PUNTO_BS = 0.10;
+    private static final int MAX_EVENTOS_LCD = 100;
 
     private record QrToken(Long camionId, LocalDateTime expiresAt) {}
 
@@ -47,6 +49,8 @@ public class RecoleccionService {
     private final ConcurrentHashMap<String, QrToken> qrTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, SesionRecoleccion> sesiones = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Map<String, RecoleccionItem>> resumenes = new ConcurrentHashMap<>();
+    private final List<RecoleccionEventoLcdDTO> eventosLcd = new ArrayList<>();
+    private long siguienteEventoLcdId = 1L;
 
     public RecoleccionService(
             CamionRepository camionRepository,
@@ -139,6 +143,16 @@ public class RecoleccionService {
         RecoleccionItem item = resumen.computeIfAbsent(tipo, RecoleccionItem::new);
         item.cantidad += cantidad != null && cantidad > 0 ? cantidad : 1.0;
         item.puntos += puntos != null ? puntos : 0;
+
+        registrarEventoLcd(sesion.camionId(), tipo, puntos != null ? puntos : 0);
+    }
+
+    public synchronized List<RecoleccionEventoLcdDTO> obtenerEventosLcd(Long camionId, Long afterId) {
+        long desde = afterId != null ? afterId : 0L;
+        return eventosLcd.stream()
+                .filter(evento -> evento.getId() > desde)
+                .filter(evento -> camionId == null || camionId.equals(evento.getCamionId()))
+                .toList();
     }
 
     public RecoleccionResumenDTO finalizarSesion(String email, String sessionToken) {
@@ -191,6 +205,21 @@ public class RecoleccionService {
 
     private double redondearDosDecimales(double valor) {
         return Math.round(valor * 100.0) / 100.0;
+    }
+
+    private synchronized void registrarEventoLcd(Long camionId, String tipoResiduo, Integer puntos) {
+        Camion camion = camionRepository.findById(camionId).orElse(null);
+        eventosLcd.add(new RecoleccionEventoLcdDTO(
+                siguienteEventoLcdId++,
+                camionId,
+                camion != null ? camion.getPlaca() : null,
+                tipoResiduo,
+                puntos != null ? puntos : 0,
+                LocalDateTime.now()));
+
+        if (eventosLcd.size() > MAX_EVENTOS_LCD) {
+            eventosLcd.subList(0, eventosLcd.size() - MAX_EVENTOS_LCD).clear();
+        }
     }
 
     private Vecino buscarVecinoPorEmail(String email) {

@@ -6,6 +6,7 @@ import os
 import time
 import uuid # Asegúrate de importar uuid arriba en tu archivo
 import requests
+import threading
 from arduino_sender import PantallaLCD
 app = Flask(__name__)
 CORS(app)
@@ -35,6 +36,12 @@ PUNTOS_CLASIFICACION = {
 
 lcd = PantallaLCD(port="COM7", baudrate=9600)
 lcd.conectar()
+lcd_lock = threading.Lock()
+
+
+def enviar_lcd(linea_1, linea_2):
+    with lcd_lock:
+        lcd.enviar(linea_1, linea_2)
 
 
 def texto_lcd_objeto(objeto_detectado, clase):
@@ -49,6 +56,64 @@ def texto_lcd_objeto(objeto_detectado, clase):
         .replace("Cartón", "Carton")
     )
     return " ".join(texto.split())[:32]
+
+def texto_lcd_residuo(tipo_residuo):
+    texto = str(tipo_residuo or "Residuo").strip().upper()
+    nombres = {
+        "BIODEGRADABLE": "Biodegradable",
+        "CARDBOARD": "Carton",
+        "CLOTH": "Tela",
+        "GLASS": "Vidrio",
+        "METAL": "Metal",
+        "PAPER": "Papel",
+        "PLASTIC": "Plastico",
+        "DESCONOCIDO": "Desconocido",
+        "NULL": "Sin residuo",
+        "NADA": "Sin residuo",
+    }
+    return nombres.get(texto, texto.title())[:32]
+
+
+def iniciar_polling_eventos_lcd():
+    enabled = os.getenv("LCD_EVENT_POLLING_ENABLED", "false").strip().lower() in {"1", "true", "yes", "si"}
+    if not enabled:
+        print("[LCD-EVENTOS] Polling desactivado. Usa LCD_EVENT_POLLING_ENABLED=true para activarlo.")
+        return
+
+    backend_api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api").rstrip("/")
+    eventos_url = os.getenv("LCD_EVENT_API_URL", f"{backend_api_url}/recoleccion/eventos-lcd").strip()
+    camion_id = os.getenv("LCD_EVENT_CAMION_ID", "").strip()
+    intervalo = float(os.getenv("LCD_EVENT_POLL_SECONDS", "3") or 3)
+
+    def poll():
+        ultimo_id = int(os.getenv("LCD_EVENT_AFTER_ID", "0") or 0)
+        print(f"[LCD-EVENTOS] Escuchando eventos desde {eventos_url}")
+
+        while True:
+            try:
+                params = {"afterId": ultimo_id}
+                if camion_id:
+                    params["camionId"] = camion_id
+
+                response = requests.get(eventos_url, params=params, timeout=8)
+                response.raise_for_status()
+                eventos = response.json()
+
+                for evento in eventos:
+                    evento_id = int(evento.get("id") or 0)
+                    tipo = texto_lcd_residuo(evento.get("tipoResiduo"))
+                    puntos = int(evento.get("puntos") or 0)
+                    enviar_lcd(tipo, f"{puntos} puntos")
+                    print(f"[LCD-EVENTOS] Evento {evento_id}: {tipo} - {puntos} puntos")
+                    ultimo_id = max(ultimo_id, evento_id)
+            except Exception as e:
+                print(f"[LCD-EVENTOS] No se pudo leer eventos: {e}")
+
+            time.sleep(intervalo)
+
+    thread = threading.Thread(target=poll, daemon=True)
+    thread.start()
+
 
 # Crear estructura de carpetas automáticamente si no existen
 os.makedirs(TEMP_FOLDER, exist_ok=True)
@@ -161,7 +226,7 @@ def upload():
     # 3. ¡Usas el LCD enviando la clase y los puntos!
     mensaje_linea_1 = texto_lcd_objeto(objeto_detectado, clase)
     mensaje_linea_2 = f"{puntos}pts {round(confianza * 100)}% x{cantidad_detectada}"
-    lcd.enviar(mensaje_linea_1, mensaje_linea_2)
+    enviar_lcd(mensaje_linea_1, mensaje_linea_2)
 
     # 4. Registrar reciclaje en el backend de Spring Boot
     backend_api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080/api")
@@ -212,6 +277,7 @@ def upload():
     })
 
 if __name__ == "__main__":
+    iniciar_polling_eventos_lcd()
     app.run(
         host="0.0.0.0",
         port=3000,
