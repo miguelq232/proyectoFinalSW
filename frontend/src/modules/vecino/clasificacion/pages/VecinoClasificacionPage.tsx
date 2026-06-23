@@ -66,18 +66,46 @@ export default function VecinoClasificacionPage() {
     }
   }, [])
 
+  function getCameraBlockMessage() {
+    if (!window.isSecureContext) {
+      return "El navegador bloquea la cámara porque la app está abierta por HTTP desde la red. En iPhone debes entrar por HTTPS para que aparezca el permiso de cámara."
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return "Este navegador no permite usar la cámara en este contexto. Usa Safari o Chrome actualizado y abre la app por HTTPS."
+    }
+
+    return null
+  }
+
   async function startCamera() {
     setError(null)
     setResult(null)
+
+    const blockMessage = getCameraBlockMessage()
+    if (blockMessage) {
+      setError(blockMessage)
+      return
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      })
+      let stream: MediaStream
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        })
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        })
+      }
 
       streamRef.current = stream
       if (videoRef.current) {
