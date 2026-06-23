@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import jsQR from "jsqr"
 import { AlertCircle, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, ScanLine, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -164,26 +165,24 @@ export default function VecinoClasificacionPage() {
       return
     }
 
-    const BarcodeDetectorCtor = (window as typeof window & {
-      BarcodeDetector?: new (options: { formats: string[] }) => {
-        detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>
-      }
-    }).BarcodeDetector
-
-    if (!BarcodeDetectorCtor) {
-      setError("Tu navegador no soporta escaneo QR directo. Usa Chrome/Edge actualizado para escanear el QR del camión.")
-      return
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      })
+      let stream: MediaStream
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        })
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        })
+      }
 
       streamRef.current = stream
       if (videoRef.current) {
@@ -192,22 +191,32 @@ export default function VecinoClasificacionPage() {
       }
 
       setQrScanning(true)
-      const detector = new BarcodeDetectorCtor({ formats: ["qr_code"] })
 
-      const scan = async () => {
+      const scan = () => {
         const video = videoRef.current
-        if (!video || !streamRef.current) return
+        const canvas = canvasRef.current
+        if (!video || !canvas || !streamRef.current) return
 
-        try {
-          const codes = await detector.detect(video)
-          const qrPayload = codes[0]?.rawValue
-          if (qrPayload) {
-            stopCamera()
-            await iniciarSesionRecoleccion(qrPayload)
-            return
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          const width = video.videoWidth || 1280
+          const height = video.videoHeight || 720
+          canvas.width = width
+          canvas.height = height
+
+          const ctx = canvas.getContext("2d", { willReadFrequently: true })
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, width, height)
+            const imageData = ctx.getImageData(0, 0, width, height)
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "attemptBoth",
+            })
+
+            if (code?.data) {
+              stopCamera()
+              void iniciarSesionRecoleccion(code.data)
+              return
+            }
           }
-        } catch {
-          // Continuar leyendo frames; algunos navegadores fallan si el video aun no esta listo.
         }
 
         scanFrameRef.current = requestAnimationFrame(scan)
