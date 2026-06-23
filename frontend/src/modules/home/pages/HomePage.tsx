@@ -1,4 +1,18 @@
-﻿import { BarChart3, Camera, LayoutDashboard, LogOut, MapPin, Recycle, Settings, Truck, Users, Compass, User, Navigation } from "lucide-react"
+import {
+  BarChart3,
+  Camera,
+  Compass,
+  History,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  Navigation,
+  Recycle,
+  Settings,
+  Truck,
+  User,
+  Users,
+} from "lucide-react"
 import { NavLink, Outlet, useNavigate } from "react-router-dom"
 
 import { authService } from "@/modules/auth/services/authService"
@@ -21,7 +35,6 @@ export default function HomePage() {
     navigate("/", { replace: true })
   }
 
-  // Generar NAV_ITEMS dinámicamente según rol
   const navItems = (() => {
     switch (rol) {
       case "OPERADOR":
@@ -32,6 +45,7 @@ export default function HomePage() {
         return [
           { to: "/home/mapa-recoleccion", label: "Radar Recolección", icon: Navigation, end: true },
           { to: "/home/clasificar-residuo", label: "Clasificar Residuo", icon: Camera, end: true },
+          { to: "/home/historial-recolecciones", label: "Historial", icon: History, end: true },
           { to: "/home/perfil-vecino", label: "Perfil Ecológico", icon: User, end: true },
         ]
       case "ADMINISTRADOR":
@@ -93,4 +107,3 @@ export default function HomePage() {
     </div>
   )
 }
-

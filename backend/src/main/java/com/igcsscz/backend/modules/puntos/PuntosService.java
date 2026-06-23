@@ -118,6 +118,7 @@ public class PuntosService {
         registro.setPuntosOtorgados(puntosOtorgados);
         registro.setFecha(LocalDateTime.now());
         registro.setDescripcion(null);
+        registro.setRecoleccionSessionToken(request.getSessionToken());
 
         puntosRepository.save(registro);
         recoleccionService.registrarItemSesion(
@@ -162,6 +163,7 @@ public class PuntosService {
         dto.setPuntosOtorgados(puntos.getPuntosOtorgados());
         dto.setFecha(puntos.getFecha());
         dto.setDescripcion(puntos.getDescripcion());
+        dto.setRecoleccionSessionToken(puntos.getRecoleccionSessionToken());
         return dto;
     }
 }

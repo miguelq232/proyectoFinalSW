@@ -30,6 +30,7 @@ export interface PuntosResponse {
   puntosOtorgados: number
   fecha: string
   descripcion: string | null
+  recoleccionSessionToken?: string | null
 }
 
 function getDetalleHistorial(descripcion: string | null) {

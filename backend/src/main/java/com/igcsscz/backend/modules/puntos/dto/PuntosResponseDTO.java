@@ -18,4 +18,5 @@ public class PuntosResponseDTO {
     private Integer puntosOtorgados;
     private LocalDateTime fecha;
     private String descripcion;
+    private String recoleccionSessionToken;
 }

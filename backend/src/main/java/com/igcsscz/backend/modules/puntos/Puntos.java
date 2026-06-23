@@ -44,4 +44,7 @@ public class Puntos {
 
     @Column(length = 500, nullable = true)
     private String descripcion;
+
+    @Column(name = "recoleccion_session_token", length = 80, nullable = true)
+    private String recoleccionSessionToken;
 }

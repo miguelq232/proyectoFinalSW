@@ -14,6 +14,7 @@ import ConfigPuntosPage from "@/modules/admin/config/pages/ConfigPuntosPage"
 import VecinoProfilePage from "@/modules/vecino/perfil/pages/VecinoProfilePage"
 import VecinoTrackingPage from "@/modules/vecino/mapa/pages/VecinoTrackingPage"
 import VecinoClasificacionPage from "@/modules/vecino/clasificacion/pages/VecinoClasificacionPage"
+import VecinoHistorialRecoleccionesPage from "@/modules/vecino/historial/pages/VecinoHistorialRecoleccionesPage"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { authService } from "@/modules/auth/services/authService"
 
@@ -60,6 +61,7 @@ export function AppRoutes() {
 
           {/* Rutas de Vecino */}
           <Route path="clasificar-residuo" element={<VecinoClasificacionPage />} />
+          <Route path="historial-recolecciones" element={<VecinoHistorialRecoleccionesPage />} />
           <Route path="perfil-vecino" element={<VecinoProfilePage />} />
           <Route path="mapa-recoleccion" element={<VecinoTrackingPage />} />
         </Route>
