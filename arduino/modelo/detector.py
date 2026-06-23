@@ -42,22 +42,36 @@ PUNTOS_CLASIFICACION = {
 
 def _normalizar_clase(valor):
     clase = str(valor or "").upper().strip()
+    clase = re.sub(r"[^A-Z]+", "_", clase).strip("_")
     aliases = {
         "CARTON": "CARDBOARD",
-        "CARTÓN": "CARDBOARD",
+        "CARTON_CORRUGADO": "CARDBOARD",
+        "CARDBOARD_BOX": "CARDBOARD",
+        "CAJA": "CARDBOARD",
+        "CAJA_DE_CARTON": "CARDBOARD",
         "PAPEL": "PAPER",
+        "HOJA": "PAPER",
+        "HOJA_DE_PAPEL": "PAPER",
+        "PAPEL_BLANCO": "PAPER",
+        "SERVILLETA": "PAPER",
         "PLASTICO": "PLASTIC",
-        "PLÁSTICO": "PLASTIC",
+        "BOTELLA_PLASTICA": "PLASTIC",
+        "BOTELLA_DE_PLASTICO": "PLASTIC",
+        "ENVASE_PLASTICO": "PLASTIC",
+        "BOLSA_PLASTICA": "PLASTIC",
         "VIDRIO": "GLASS",
+        "BOTELLA_DE_VIDRIO": "GLASS",
         "METALICO": "METAL",
-        "METÁLICO": "METAL",
+        "LATA": "METAL",
         "TELA": "CLOTH",
         "ROPA": "CLOTH",
         "ORGANICO": "BIODEGRADABLE",
-        "ORGÁNICO": "BIODEGRADABLE",
-        "BIODEGRADABLE": "BIODEGRADABLE",
+        "COMIDA": "BIODEGRADABLE",
+        "FRUTA": "BIODEGRADABLE",
+        "VERDURA": "BIODEGRADABLE",
         "UNKNOWN": "DESCONOCIDO",
         "NULL": "DESCONOCIDO",
+        "NO_IDENTIFICADO": "DESCONOCIDO",
     }
     clase = aliases.get(clase, clase)
     return clase if clase in CLASES_PERMITIDAS else "DESCONOCIDO"
@@ -83,6 +97,24 @@ def _extraer_json(texto):
             return {}
 
 
+def _buscar_valor(resultado, *keys):
+    if not isinstance(resultado, dict):
+        return None
+
+    lower_keys = {str(key).lower(): value for key, value in resultado.items()}
+    for key in keys:
+        value = lower_keys.get(key.lower())
+        if value is not None:
+            return value
+
+    for value in resultado.values():
+        if isinstance(value, dict):
+            nested = _buscar_valor(value, *keys)
+            if nested is not None:
+                return nested
+    return None
+
+
 def _gemini_payload(base64_image):
     prompt = """
 Analiza la imagen e identifica el objeto principal visible.
@@ -91,7 +123,7 @@ Tu objetivo es clasificar el MATERIAL predominante del objeto principal.
 NO debes decidir si es basura, residuo o desperdicio.
 
 El objeto puede estar nuevo, limpio, usado, en una mesa, en una mano o en el piso.
-Igual debes clasificarlo según su material visible.
+Igual debes clasificarlo segun su material visible.
 
 Clases permitidas:
 BIODEGRADABLE, CARDBOARD, CLOTH, GLASS, METAL, PAPER, PLASTIC, DESCONOCIDO.
@@ -158,7 +190,7 @@ Formato exacto:
 def detectar_reciclable(imagen_path, nombre_archivo):
     clase_final = "DESCONOCIDO"
     confianza_final = 0.0
-    descripcion = "No se pudo identificar claramente el residuo."
+    descripcion = "No se pudo identificar claramente el objeto."
     objeto_detectado = "No identificado"
     texto_vision = "No se pudo obtener una descripcion visual de la imagen."
     puntos_sugeridos = 0
@@ -209,14 +241,31 @@ def detectar_reciclable(imagen_path, nombre_archivo):
             .get("text", "")
         )
         resultado = _extraer_json(texto)
+        print(f"[Gemini raw text] {texto[:1000]}")
+        print(f"[Gemini parsed json] {resultado}")
 
-        clase_final = _normalizar_clase(resultado.get("clasificacion"))
-        confianza_final = float(resultado.get("confianza", 0) or 0)
+        clase_final = _normalizar_clase(
+            _buscar_valor(resultado, "clasificacion", "categoria", "category", "clase", "class", "material")
+        )
+        confianza_final = float(_buscar_valor(resultado, "confianza", "confidence", "score") or 0)
         confianza_final = max(0.0, min(confianza_final, 1.0))
-        descripcion = str(resultado.get("descripcion") or descripcion).strip()[:220]
-        objeto_detectado = str(resultado.get("objeto_detectado") or descripcion or objeto_detectado).strip()[:120]
-        texto_vision = str(resultado.get("texto_vision") or descripcion or texto or texto_vision).strip()[:420]
-        puntos_sugeridos = int(resultado.get("puntos", PUNTOS_CLASIFICACION[clase_final]) or 0)
+        descripcion = str(
+            _buscar_valor(resultado, "descripcion", "description", "explicacion") or descripcion
+        ).strip()[:220]
+        objeto_detectado = str(
+            _buscar_valor(resultado, "objeto_detectado", "objeto", "object", "object_detected")
+            or descripcion
+            or objeto_detectado
+        ).strip()[:120]
+        texto_vision = str(
+            _buscar_valor(resultado, "texto_vision", "vision_text", "analisis", "analysis")
+            or descripcion
+            or texto
+            or texto_vision
+        ).strip()[:420]
+        puntos_sugeridos = int(
+            _buscar_valor(resultado, "puntos", "points", "score_points") or PUNTOS_CLASIFICACION[clase_final]
+        )
         puntos_sugeridos = PUNTOS_CLASIFICACION.get(clase_final, puntos_sugeridos)
 
         print(
