@@ -85,21 +85,50 @@ def _extraer_json(texto):
 
 def _gemini_payload(base64_image):
     prompt = """
-Analiza la foto de un residuo urbano y responde solo JSON valido, sin markdown.
-Debes clasificar el objeto principal en una de estas clases exactas:
+Analiza la imagen e identifica el objeto principal visible.
+
+Tu objetivo es clasificar el MATERIAL predominante del objeto principal.
+NO debes decidir si es basura, residuo o desperdicio.
+
+El objeto puede estar nuevo, limpio, usado, en una mesa, en una mano o en el piso.
+Igual debes clasificarlo según su material visible.
+
+Clases permitidas:
 BIODEGRADABLE, CARDBOARD, CLOTH, GLASS, METAL, PAPER, PLASTIC, DESCONOCIDO.
 
-Usa DESCONOCIDO si la imagen no muestra claramente basura reciclable, hay muchos objetos
-sin un principal, o no puedes determinar el material.
+Reglas:
+- Siempre intenta clasificar por material visible antes de usar DESCONOCIDO.
+- No importa si el objeto no parece basura; si parece de plastico, papel, carton,
+  vidrio, metal, tela u organico, devuelve esa categoria.
+- Si ves una botella plastica, envase plastico, bolsa plastica o tapa plastica: PLASTIC.
+- Si ves una hoja simple, hoja blanca, cuaderno, papel impreso, ticket o servilleta seca: PAPER.
+- Si ves una caja, carton corrugado o empaque de carton: CARDBOARD.
+- Si ves una botella, vaso o frasco de vidrio: GLASS.
+- Si ves una lata, herramienta, pieza o envase metalico: METAL.
+- Si ves ropa, tela, trapo o mochila de tela: CLOTH.
+- Si ves cascara, fruta, verdura, comida natural o restos organicos: BIODEGRADABLE.
+- Usa DESCONOCIDO solo si no hay objeto principal claro, la imagen esta demasiado borrosa
+  o el material no se puede determinar ni por apariencia.
 
-Puntos por clase:
-BIODEGRADABLE=5, CARDBOARD=10, CLOTH=15, GLASS=20, METAL=25, PAPER=10, PLASTIC=15, DESCONOCIDO=0.
+Devuelve solo JSON valido, sin markdown.
+
+Puntos:
+BIODEGRADABLE=5
+CARDBOARD=10
+CLOTH=15
+GLASS=20
+METAL=25
+PAPER=10
+PLASTIC=15
+DESCONOCIDO=0
 
 Formato exacto:
 {
   "clasificacion": "PLASTIC",
-  "confianza": 0.87,
-  "descripcion": "Botella plastica transparente",
+  "confianza": 0.95,
+  "descripcion": "Objeto de plastico transparente",
+  "objeto_detectado": "botella plastica",
+  "texto_vision": "Veo un objeto que parece de plastico. Lo clasifico por su material predominante.",
   "puntos": 15
 }
 """.strip()
@@ -130,13 +159,22 @@ def detectar_reciclable(imagen_path, nombre_archivo):
     clase_final = "DESCONOCIDO"
     confianza_final = 0.0
     descripcion = "No se pudo identificar claramente el residuo."
+    objeto_detectado = "No identificado"
+    texto_vision = "No se pudo obtener una descripcion visual de la imagen."
     puntos_sugeridos = 0
     img_anotada = cv2.imread(imagen_path)
 
     if not GEMINI_API_KEY:
         print("Error Gemini: falta GEMINI_API_KEY en arduino/.env")
         return _guardar_resultado(
-            img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
+            img_anotada,
+            clase_final,
+            confianza_final,
+            descripcion,
+            objeto_detectado,
+            texto_vision,
+            puntos_sugeridos,
+            nombre_archivo,
         )
 
     try:
@@ -153,7 +191,14 @@ def detectar_reciclable(imagen_path, nombre_archivo):
         if response.status_code != 200:
             print(f"Error Gemini HTTP {response.status_code}: {response.text[:500]}")
             return _guardar_resultado(
-                img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
+                img_anotada,
+                clase_final,
+                confianza_final,
+                descripcion,
+                objeto_detectado,
+                texto_vision,
+                puntos_sugeridos,
+                nombre_archivo,
             )
 
         data = response.json()
@@ -168,24 +213,42 @@ def detectar_reciclable(imagen_path, nombre_archivo):
         clase_final = _normalizar_clase(resultado.get("clasificacion"))
         confianza_final = float(resultado.get("confianza", 0) or 0)
         confianza_final = max(0.0, min(confianza_final, 1.0))
-        descripcion = str(resultado.get("descripcion") or descripcion).strip()[:180]
+        descripcion = str(resultado.get("descripcion") or descripcion).strip()[:220]
+        objeto_detectado = str(resultado.get("objeto_detectado") or descripcion or objeto_detectado).strip()[:120]
+        texto_vision = str(resultado.get("texto_vision") or descripcion or texto or texto_vision).strip()[:420]
         puntos_sugeridos = int(resultado.get("puntos", PUNTOS_CLASIFICACION[clase_final]) or 0)
         puntos_sugeridos = PUNTOS_CLASIFICACION.get(clase_final, puntos_sugeridos)
 
         print(
             f"[Gemini] clase={clase_final} conf={confianza_final:.2f} "
-            f"puntos={puntos_sugeridos} desc={descripcion}"
+            f"puntos={puntos_sugeridos} objeto={objeto_detectado} desc={descripcion}"
         )
 
     except Exception as exc:
         print(f"Error en la consulta a Gemini: {exc}")
 
     return _guardar_resultado(
-        img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo
+        img_anotada,
+        clase_final,
+        confianza_final,
+        descripcion,
+        objeto_detectado,
+        texto_vision,
+        puntos_sugeridos,
+        nombre_archivo,
     )
 
 
-def _guardar_resultado(img_anotada, clase_final, confianza_final, descripcion, puntos_sugeridos, nombre_archivo):
+def _guardar_resultado(
+    img_anotada,
+    clase_final,
+    confianza_final,
+    descripcion,
+    objeto_detectado,
+    texto_vision,
+    puntos_sugeridos,
+    nombre_archivo,
+):
     ruta_guardado = os.path.join("static", "uploads", clase_final, nombre_archivo)
     os.makedirs(os.path.dirname(ruta_guardado), exist_ok=True)
 
@@ -207,5 +270,7 @@ def _guardar_resultado(img_anotada, clase_final, confianza_final, descripcion, p
         "clase": clase_final,
         "confianza": round(confianza_final, 2),
         "descripcion": descripcion,
+        "objeto_detectado": objeto_detectado,
+        "texto_vision": texto_vision,
         "puntos_sugeridos": puntos_sugeridos,
     }

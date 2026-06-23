@@ -118,6 +118,8 @@ def upload():
     clase     = resultado["clase"].upper().strip()
     confianza = resultado["confianza"]
     descripcion = resultado.get("descripcion", "Sin descripcion disponible")
+    objeto_detectado = resultado.get("objeto_detectado", "No identificado")
+    texto_vision = resultado.get("texto_vision", descripcion)
 
     # # Mover a carpeta de clase correspondiente
     # clase_key = clase if clase in CLASES else "desconocido"
@@ -173,6 +175,8 @@ def upload():
         "codigo_cliente":  codigo_cliente,
         "clasificacion":   clase,
         "descripcion":     descripcion,
+        "objeto_detectado": objeto_detectado,
+        "texto_vision":    texto_vision,
         "confianza":       round(confianza * 100, 1),
         "puntos":          puntos,
         "backend_success": backend_error is None,

@@ -12,6 +12,8 @@ type ClasificacionResponse = {
   codigo_cliente: string
   clasificacion: string
   descripcion?: string
+  objeto_detectado?: string
+  texto_vision?: string
   confianza: number
   puntos: number
   backend_success: boolean
@@ -197,6 +199,7 @@ export default function VecinoClasificacionPage() {
 
   const codigoCliente = vecino ? `VEC-${vecino.id}-IGCS` : ""
   const clase = result?.clasificacion?.toUpperCase() || ""
+  const textoVision = result?.texto_vision || result?.descripcion || ""
 
   return (
     <div className="p-6 md:p-10 space-y-6">
@@ -331,10 +334,14 @@ export default function VecinoClasificacionPage() {
                   <ResultBox label="Puntos" value={`+${result.puntos}`} />
                   <ResultBox label="Total" value={result.puntos_acumulados != null ? `${result.puntos_acumulados}` : "-"} />
                 </div>
-                {result.descripcion ? (
-                  <p className="rounded-lg bg-white/80 p-3 text-sm font-medium text-emerald-950">
-                    {result.descripcion}
-                  </p>
+                {textoVision ? (
+                  <div className="rounded-lg border border-emerald-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase text-emerald-700/70">Lo que Gemini ve</p>
+                    {result.objeto_detectado ? (
+                      <p className="mt-1 text-sm font-bold text-emerald-950">{result.objeto_detectado}</p>
+                    ) : null}
+                    <p className="mt-2 text-sm leading-6 text-emerald-950">{textoVision}</p>
+                  </div>
                 ) : null}
                 {!result.backend_success && result.backend_error ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
