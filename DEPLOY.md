@@ -7,7 +7,7 @@ cp .env.deploy.example .env.deploy
 nano .env.deploy
 ```
 
-Completa `POSTGRES_PASSWORD`, `JWT_SECRET` y `ROBOFLOW_API_KEY`.
+Completa `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, `JWT_SECRET` y `ROBOFLOW_API_KEY`.
 
 ## 2. Levantar servicios
 
