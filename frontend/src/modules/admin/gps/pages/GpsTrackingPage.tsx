@@ -54,6 +54,15 @@ export const gpsService = {
     }
   },
 
+  async getCamionesVecinoVivo(): Promise<CamionUbicacion[]> {
+    try {
+      const res = await api.get<CamionUbicacion[]>("/gps/vecino/vivo")
+      return res.data
+    } catch (e) {
+      throw new Error(getErrorMessage(e))
+    }
+  },
+
   async checkProximidad(): Promise<CercaniaResponse> {
     try {
       const res = await api.get<CercaniaResponse>("/gps/cercano")

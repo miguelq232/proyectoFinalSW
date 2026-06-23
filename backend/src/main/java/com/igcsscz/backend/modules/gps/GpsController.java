@@ -40,6 +40,14 @@ public class GpsController {
         return ResponseEntity.ok(gpsService.obtenerUbicacionesPorZona(zonaId));
     }
 
+    @GetMapping("/vecino/vivo")
+    public ResponseEntity<List<CamionUbicacionDTO>> obtenerUbicacionesParaVecino(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(gpsService.obtenerUbicacionesParaVecino(principal.getName()));
+    }
+
     @GetMapping("/cercano")
     public ResponseEntity<CercaniaResponseDTO> checkCercania(Principal principal) {
         if (principal == null) {

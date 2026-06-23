@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react"
-import { AlertCircle, Camera, CheckCircle2, Loader2, RefreshCw, ScanLine, Sparkles, X } from "lucide-react"
+import { AlertCircle, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, ScanLine, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { vecinoService, type VecinoProfile } from "@/modules/vecino/perfil/pages/VecinoProfilePage"
+import { api, getErrorMessage } from "@/shared/services/api"
 
 const ARDUINO_API_BASE = (import.meta.env.VITE_ARDUINO_API_URL || "/arduino") as string
 
@@ -24,6 +25,14 @@ type ClasificacionResponse = {
   error?: string
 }
 
+type RecoleccionSesion = {
+  sessionToken: string
+  camionId: number
+  placa: string
+  distanciaMetros: number
+  expiresAt: string
+}
+
 const labels: Record<string, string> = {
   BIODEGRADABLE: "Biodegradable",
   CARDBOARD: "Cartón",
@@ -39,10 +48,14 @@ export default function VecinoClasificacionPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const scanFrameRef = useRef<number | null>(null)
 
   const [vecino, setVecino] = useState<VecinoProfile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [cameraActive, setCameraActive] = useState(false)
+  const [qrScanning, setQrScanning] = useState(false)
+  const [qrSubmitting, setQrSubmitting] = useState(false)
+  const [collectionSession, setCollectionSession] = useState<RecoleccionSesion | null>(null)
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -66,6 +79,7 @@ export default function VecinoClasificacionPage() {
     return () => {
       mounted = false
       stopCamera()
+      if (scanFrameRef.current) cancelAnimationFrame(scanFrameRef.current)
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [])
@@ -85,6 +99,11 @@ export default function VecinoClasificacionPage() {
   async function startCamera() {
     setError(null)
     setResult(null)
+
+    if (!collectionSession) {
+      setError("Primero escanea el QR dinámico del camión cuando esté en tu puerta.")
+      return
+    }
 
     const blockMessage = getCameraBlockMessage()
     if (blockMessage) {
@@ -123,10 +142,110 @@ export default function VecinoClasificacionPage() {
   }
 
   function stopCamera() {
+    if (scanFrameRef.current) {
+      cancelAnimationFrame(scanFrameRef.current)
+      scanFrameRef.current = null
+    }
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     setCameraActive(false)
+    setQrScanning(false)
     if (videoRef.current) videoRef.current.srcObject = null
+  }
+
+  async function startQrScanner() {
+    setError(null)
+    setResult(null)
+    resetCapture()
+
+    const blockMessage = getCameraBlockMessage()
+    if (blockMessage) {
+      setError(blockMessage)
+      return
+    }
+
+    const BarcodeDetectorCtor = (window as typeof window & {
+      BarcodeDetector?: new (options: { formats: string[] }) => {
+        detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>
+      }
+    }).BarcodeDetector
+
+    if (!BarcodeDetectorCtor) {
+      setError("Tu navegador no soporta escaneo QR directo. Usa Chrome/Edge actualizado para escanear el QR del camión.")
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      })
+
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      setQrScanning(true)
+      const detector = new BarcodeDetectorCtor({ formats: ["qr_code"] })
+
+      const scan = async () => {
+        const video = videoRef.current
+        if (!video || !streamRef.current) return
+
+        try {
+          const codes = await detector.detect(video)
+          const qrPayload = codes[0]?.rawValue
+          if (qrPayload) {
+            stopCamera()
+            await iniciarSesionRecoleccion(qrPayload)
+            return
+          }
+        } catch {
+          // Continuar leyendo frames; algunos navegadores fallan si el video aun no esta listo.
+        }
+
+        scanFrameRef.current = requestAnimationFrame(scan)
+      }
+
+      scanFrameRef.current = requestAnimationFrame(scan)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir la cámara para escanear el QR")
+      stopCamera()
+    }
+  }
+
+  async function iniciarSesionRecoleccion(qrPayload: string) {
+    setQrSubmitting(true)
+    setError(null)
+    try {
+      const res = await api.post<RecoleccionSesion>("/recoleccion/sesiones", { qrPayload })
+      setCollectionSession(res.data)
+      setResult(null)
+      resetCapture()
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setQrSubmitting(false)
+    }
+  }
+
+  async function finalizarSesionRecoleccion() {
+    if (!collectionSession) return
+    try {
+      await api.delete(`/recoleccion/sesiones/${collectionSession.sessionToken}`)
+    } catch {
+      // La sesión también expira sola en backend; no bloqueamos el cierre local.
+    } finally {
+      setCollectionSession(null)
+      resetCapture()
+      stopCamera()
+    }
   }
 
   function capturePhoto() {
@@ -165,7 +284,7 @@ export default function VecinoClasificacionPage() {
   }
 
   async function classifyWaste() {
-    if (!vecino || !imageBlob) return
+    if (!vecino || !imageBlob || !collectionSession) return
 
     setSubmitting(true)
     setError(null)
@@ -173,6 +292,7 @@ export default function VecinoClasificacionPage() {
 
     const formData = new FormData()
     formData.append("codigo_cliente", `VEC-${vecino.id}-IGCS`)
+    formData.append("session_token", collectionSession.sessionToken)
     formData.append("imagen", imageBlob, `vecino-${vecino.id}-residuo.jpg`)
 
     try {
@@ -207,7 +327,7 @@ export default function VecinoClasificacionPage() {
       <header className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Clasificar residuo</h1>
         <p className="text-neutral-500">
-          Captura una foto del residuo con tu cámara y registra los puntos en tu perfil.
+          Escanea el QR del camión cuando esté en tu puerta y luego captura tus residuos.
         </p>
       </header>
 
@@ -226,7 +346,7 @@ export default function VecinoClasificacionPage() {
               Cámara de clasificación
             </CardTitle>
             <CardDescription>
-              Centra el residuo en la imagen y evita fondos con muchos objetos.
+              La cámara se habilita únicamente durante una recolección validada por QR del camión.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 md:p-6">
@@ -242,20 +362,32 @@ export default function VecinoClasificacionPage() {
               ) : null}
               {!cameraActive && !previewUrl ? (
                 <div className="flex flex-col items-center gap-3 text-neutral-300">
-                  <ScanLine className="size-12" aria-hidden />
-                  <span className="text-sm font-medium">Sin captura</span>
+                  {qrScanning ? <QrCode className="size-12" aria-hidden /> : <ScanLine className="size-12" aria-hidden />}
+                  <span className="text-sm font-medium">{qrScanning ? "Leyendo QR del camión..." : "Sin captura"}</span>
                 </div>
               ) : null}
               <canvas ref={canvasRef} className="hidden" />
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {!collectionSession ? (
+                <Button
+                  type="button"
+                  onClick={startQrScanner}
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  disabled={loadingProfile || qrScanning || qrSubmitting || submitting}
+                >
+                  {qrScanning || qrSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <QrCode className="size-4" aria-hidden />}
+                  Escanear QR del camión
+                </Button>
+              ) : null}
+
               {!cameraActive ? (
                 <Button
                   type="button"
                   onClick={startCamera}
                   className="bg-green-600 text-white hover:bg-green-700"
-                  disabled={loadingProfile || submitting}
+                  disabled={loadingProfile || submitting || qrScanning || !collectionSession}
                 >
                   <Camera className="size-4" aria-hidden />
                   Abrir cámara
@@ -283,12 +415,19 @@ export default function VecinoClasificacionPage() {
               <Button
                 type="button"
                 onClick={classifyWaste}
-                disabled={!imageBlob || !vecino || submitting}
+                disabled={!imageBlob || !vecino || !collectionSession || submitting}
                 className="bg-emerald-700 text-white hover:bg-emerald-800"
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
                 Clasificar y registrar
               </Button>
+
+              {collectionSession ? (
+                <Button type="button" variant="outline" onClick={finalizarSesionRecoleccion} disabled={submitting}>
+                  <X className="size-4" aria-hidden />
+                  Finalizar recolección
+                </Button>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -296,10 +435,21 @@ export default function VecinoClasificacionPage() {
         <div className="space-y-6">
           <Card className="border-neutral-100 bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Datos del registro</CardTitle>
-              <CardDescription>El código se toma automáticamente de tu cuenta.</CardDescription>
+              <CardTitle className="text-base">Sesión de recolección</CardTitle>
+              <CardDescription>Se activa al escanear el QR dinámico del camión.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              <div className={`rounded-lg p-3 ${collectionSession ? "bg-emerald-50 border border-emerald-100" : "bg-neutral-50"}`}>
+                <p className="text-xs font-semibold uppercase text-neutral-400">Estado</p>
+                <p className={`font-semibold ${collectionSession ? "text-emerald-800" : "text-neutral-800"}`}>
+                  {collectionSession ? `Activa con camión ${collectionSession.placa}` : "Pendiente de QR"}
+                </p>
+                {collectionSession ? (
+                  <p className="mt-1 text-xs text-emerald-700">
+                    Distancia validada: {collectionSession.distanciaMetros.toFixed(0)} m. Expira {new Date(collectionSession.expiresAt).toLocaleTimeString()}.
+                  </p>
+                ) : null}
+              </div>
               <div className="rounded-lg bg-neutral-50 p-3">
                 <p className="text-xs font-semibold uppercase text-neutral-400">Vecino</p>
                 <p className="font-semibold text-neutral-800">

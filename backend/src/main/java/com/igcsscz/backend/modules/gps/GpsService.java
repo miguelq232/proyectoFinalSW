@@ -84,18 +84,36 @@ public class GpsService {
         return lista;
     }
 
-    public CercaniaResponseDTO calcularCercaniaVecino(String email) {
-        Vecino vecino = vecinoRepository.findAll().stream()
-                .filter(v -> v.getEmail().equalsIgnoreCase(email.trim()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
+    @Transactional
+    public List<CamionUbicacionDTO> obtenerUbicacionesParaVecino(String email) {
+        Vecino vecino = buscarVecinoPorEmail(email);
 
-        if (vecino.getLatitud() == null || vecino.getLongitud() == null || vecino.getZona() == null) {
+        if (vecino.getLatitud() == null || vecino.getLongitud() == null) {
+            return List.of();
+        }
+
+        List<CamionUbicacionDTO> lista = new ArrayList<>();
+        List<Camion> camiones = camionRepository.findAll();
+
+        for (Camion c : camiones) {
+            CoordenadasLive coord = ubicacionesVivas.get(c.getId());
+            if (coord != null && camionEsVisibleParaVecino(c, vecino)) {
+                lista.add(mapToUbicacionDTO(c, coord));
+            }
+        }
+
+        return lista;
+    }
+
+    @Transactional
+    public CercaniaResponseDTO calcularCercaniaVecino(String email) {
+        Vecino vecino = buscarVecinoPorEmail(email);
+
+        if (vecino.getLatitud() == null || vecino.getLongitud() == null) {
             return new CercaniaResponseDTO(false, null, null, null, null);
         }
 
-        Long zonaId = vecino.getZona().getId();
-        List<CamionUbicacionDTO> camionesEnZona = obtenerUbicacionesPorZona(zonaId);
+        List<CamionUbicacionDTO> camionesEnZona = obtenerUbicacionesParaVecino(email);
 
         if (camionesEnZona.isEmpty()) {
             return new CercaniaResponseDTO(false, null, null, null, null);
@@ -128,6 +146,48 @@ public class GpsService {
         }
 
         return new CercaniaResponseDTO(false, null, null, null, null);
+    }
+
+    private Vecino buscarVecinoPorEmail(String email) {
+        return vecinoRepository.findAll().stream()
+                .filter(v -> v.getEmail().equalsIgnoreCase(email.trim()))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vecino no encontrado"));
+    }
+
+    @Transactional
+    public Double calcularDistanciaCamionVecino(Long camionId, String email) {
+        Vecino vecino = buscarVecinoPorEmail(email);
+        CoordenadasLive coord = ubicacionesVivas.get(camionId);
+
+        if (vecino.getLatitud() == null || vecino.getLongitud() == null || coord == null) {
+            return null;
+        }
+
+        return calcularHaversine(vecino.getLatitud(), vecino.getLongitud(), coord.latitud, coord.longitud);
+    }
+
+    private boolean camionEsVisibleParaVecino(Camion camion, Vecino vecino) {
+        if (camion.getZona() == null) {
+            return false;
+        }
+
+        if (vecino.getZona() != null && camion.getZona().getId().equals(vecino.getZona().getId())) {
+            return true;
+        }
+
+        if (camion.getZona().getLatitudCentro() == null ||
+                camion.getZona().getLongitudCentro() == null ||
+                camion.getZona().getRadioKm() == null) {
+            return false;
+        }
+
+        double distanciaAlCentro = calcularHaversine(
+                vecino.getLatitud(), vecino.getLongitud(),
+                camion.getZona().getLatitudCentro(), camion.getZona().getLongitudCentro()
+        );
+
+        return distanciaAlCentro <= camion.getZona().getRadioKm() * 1000.0;
     }
 
     private double calcularHaversine(double lat1, double lon1, double lat2, double lon2) {

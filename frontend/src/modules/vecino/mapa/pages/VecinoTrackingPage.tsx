@@ -61,7 +61,7 @@ export default function VecinoTrackingPage() {
     try {
       const [pData, cData] = await Promise.all([
         gpsService.checkProximidad(),
-        vecino.zonaId ? gpsService.getCamionesPorZonaVivo(vecino.zonaId) : Promise.resolve([])
+        gpsService.getCamionesVecinoVivo()
       ])
       setProximidad(pData)
       setCamionesEnZona(cData)
@@ -105,7 +105,7 @@ export default function VecinoTrackingPage() {
     })
   })
 
-  const circleArea = vecino && vecino.latitud && vecino.longitud && vecino.zonaId
+  const circleArea = vecino && vecino.latitud && vecino.longitud
     ? {
         center: [vecino.latitud, vecino.longitud] as [number, number],
         radiusMeters: 500, // Mostrar el círculo de alerta de 500 metros alrededor de su casa
@@ -126,12 +126,12 @@ export default function VecinoTrackingPage() {
       alertDescription = `No hay vehículos de basura transmitiendo telemetría en el distrito: ${vecino.zonaNombre || "Sin asignar"}.`
       alertIcon = <Radio className="size-6 text-neutral-400" />
     } else if (proximidad) {
-      if (proximidad.cerca && proximidad.distanciaMetros) {
+      if (proximidad.cerca && proximidad.distanciaMetros !== null) {
         alertBg = "bg-red-50 border-red-200 text-red-900 shadow-md animate-pulse border-2"
         alertTitle = "EL CAMIÓN ESTÁ MUY CERCA DE TU CASA"
         alertDescription = `Vehículo placa ${proximidad.placa} conducido por ${proximidad.operadorNombre || "—"} está a solo ${proximidad.distanciaMetros.toFixed(0)} metros. Saca tus bolsas de residuos.`
         alertIcon = <Bell className="size-6 text-red-600 animate-bounce" />
-      } else if (proximidad.distanciaMetros) {
+      } else if (proximidad.distanciaMetros !== null) {
         const distKm = (proximidad.distanciaMetros / 1000).toFixed(1)
         if (proximidad.distanciaMetros <= 1000) {
           alertBg = "bg-amber-50 border-amber-200 text-amber-900 shadow-sm border"
@@ -140,7 +140,7 @@ export default function VecinoTrackingPage() {
           alertIcon = <ShieldAlert className="size-6 text-amber-600" />
         } else {
           alertBg = "bg-blue-50 border-blue-100 text-blue-900 shadow-sm"
-          alertTitle = "Ô£à Recolector en ruta"
+          alertTitle = "Recolector en ruta"
           alertDescription = `Camión de basura transitando activamente a ${distKm} km de tu ubicación.`
           alertIcon = <CheckCircle className="size-6 text-blue-600" />
         }

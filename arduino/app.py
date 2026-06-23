@@ -113,6 +113,7 @@ def api_galeria():
 @app.route("/upload", methods=["POST"])
 def upload():
     codigo_cliente = request.form.get("codigo_cliente", "").strip()
+    session_token = request.form.get("session_token", "").strip()
     imagen_file    = request.files.get("imagen")
 
     if not codigo_cliente or not imagen_file:
@@ -173,7 +174,8 @@ def upload():
         payload = {
             "codigoCliente": codigo_cliente,
             "puntos": puntos,
-            "clasificacion": clase
+            "clasificacion": clase,
+            "sessionToken": session_token
         }
         # Enviar petición POST local con timeout corto (por si el backend no está corriendo)
         response = requests.post(backend_url, json=payload, timeout=5)

@@ -5,6 +5,7 @@ import com.igcsscz.backend.modules.puntos.dto.PuntosRequestDTO;
 import com.igcsscz.backend.modules.puntos.dto.PuntosResponseDTO;
 import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeRequestDTO;
 import com.igcsscz.backend.modules.puntos.dto.RegistrarReciclajeResponseDTO;
+import com.igcsscz.backend.modules.recoleccion.RecoleccionService;
 import com.igcsscz.backend.modules.vecino.Vecino;
 import com.igcsscz.backend.modules.vecino.VecinoRepository;
 import java.time.LocalDateTime;
@@ -20,14 +21,17 @@ public class PuntosService {
     private final PuntosRepository puntosRepository;
     private final VecinoRepository vecinoRepository;
     private final ConfigPuntosService configPuntosService;
+    private final RecoleccionService recoleccionService;
 
     public PuntosService(
             PuntosRepository puntosRepository,
             VecinoRepository vecinoRepository,
-            ConfigPuntosService configPuntosService) {
+            ConfigPuntosService configPuntosService,
+            RecoleccionService recoleccionService) {
         this.puntosRepository = puntosRepository;
         this.vecinoRepository = vecinoRepository;
         this.configPuntosService = configPuntosService;
+        this.recoleccionService = recoleccionService;
     }
 
     @Transactional
@@ -70,6 +74,8 @@ public class PuntosService {
         }
 
         String codigo = request.getCodigoCliente().trim();
+        recoleccionService.validarSesion(codigo, request.getSessionToken());
+
         Vecino vecino =
                 vecinoRepository
                         .findByCodigoQR(codigo)

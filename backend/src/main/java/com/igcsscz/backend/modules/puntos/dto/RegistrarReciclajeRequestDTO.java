@@ -12,4 +12,5 @@ public class RegistrarReciclajeRequestDTO {
     private String codigoCliente;
     private Integer puntos;
     private String clasificacion;
+    private String sessionToken;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Truck, MapPin, Play, Square, Loader2, AlertCircle, ShieldAlert, Radio, Compass } from "lucide-react"
+import { Truck, MapPin, Play, Square, Loader2, AlertCircle, ShieldAlert, Radio, Compass, QrCode, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import MapTracker, { type MapMarker } from "@/shared/components/MapTracker"
@@ -7,11 +7,19 @@ import { camionesService, type CamionResponse } from "@/modules/admin/camion/pag
 import { zonasService, type ZonaResponse } from "@/modules/admin/zona/pages/ZonasPage"
 import { gpsService } from "@/modules/admin/gps/pages/GpsTrackingPage"
 import { authService } from "@/modules/auth/services/authService"
+import { api, getErrorMessage } from "@/shared/services/api"
 
 interface LogMessage {
   time: string
   text: string
   type: "info" | "success" | "error"
+}
+
+interface CamionQr {
+  camionId: number
+  placa: string
+  qrPayload: string
+  expiresAt: string
 }
 
 export default function OperadorZonePage() {
@@ -24,6 +32,8 @@ export default function OperadorZonePage() {
   const [isSimulating, setIsSimulating] = useState(false)
   const [currentCoords, setCurrentCoords] = useState<[number, number] | null>(null)
   const [logs, setLogs] = useState<LogMessage[]>([])
+  const [camionQr, setCamionQr] = useState<CamionQr | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
   
   const simulationIntervalRef = useRef<any>(null)
   const angleRef = useRef<number>(0)
@@ -54,11 +64,25 @@ export default function OperadorZonePage() {
             setCurrentCoords([zData.latitudCentro, zData.longitudCentro])
           }
         }
+        await refreshCamionQr(myCamion.id)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar asignación de operario")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function refreshCamionQr(camionId = assignedCamion?.id) {
+    if (!camionId) return
+    setQrLoading(true)
+    try {
+      const res = await api.post<CamionQr>(`/recoleccion/camiones/${camionId}/qr`)
+      setCamionQr(res.data)
+    } catch (err) {
+      addLog(getErrorMessage(err), "error")
+    } finally {
+      setQrLoading(false)
     }
   }
 
@@ -222,6 +246,49 @@ export default function OperadorZonePage() {
                   <Radio className="size-3.5 text-neutral-400" />
                   {assignedZona?.radioKm ? `${assignedZona.radioKm} Kilómetros` : "—"}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-neutral-100 shadow-sm overflow-hidden text-left">
+            <CardHeader className="bg-neutral-50 border-b border-neutral-100 py-4">
+              <CardTitle className="text-base font-bold text-neutral-800 flex items-center gap-2">
+                <QrCode className="size-5 text-green-600" />
+                QR dinámico del camión
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 grid gap-4 sm:grid-cols-[180px_1fr] items-center">
+              <div className="size-44 rounded-xl border border-neutral-100 bg-white p-3 shadow-sm flex items-center justify-center">
+                {camionQr ? (
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(camionQr.qrPayload)}`}
+                    alt="QR dinámico del camión"
+                    className="size-40"
+                  />
+                ) : (
+                  <QrCode className="size-12 text-neutral-300" />
+                )}
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-neutral-400">Vigencia</p>
+                  <p className="font-semibold text-neutral-800">
+                    {camionQr ? `Expira ${new Date(camionQr.expiresAt).toLocaleTimeString()}` : "Sin QR generado"}
+                  </p>
+                </div>
+                <p className="text-sm text-neutral-500">
+                  El vecino debe escanear este QR cuando el camión esté en su puerta. El código se renueva cada vez que lo generas.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => refreshCamionQr()}
+                  disabled={qrLoading}
+                  className="border-neutral-200"
+                >
+                  {qrLoading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  Renovar QR
+                </Button>
               </div>
             </CardContent>
           </Card>
